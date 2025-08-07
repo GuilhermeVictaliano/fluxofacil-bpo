@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -52,6 +53,17 @@ export default {
 					DEFAULT: 'hsl(var(--card))',
 					foreground: 'hsl(var(--card-foreground))'
 				},
+				// Financial BPO specific colors
+				financial: {
+					primary: 'hsl(var(--financial-primary))',
+					'primary-foreground': 'hsl(var(--financial-primary-foreground))',
+					income: 'hsl(var(--financial-income))',
+					'income-foreground': 'hsl(var(--financial-income-foreground))',
+					expense: 'hsl(var(--financial-expense))',
+					'expense-foreground': 'hsl(var(--financial-expense-foreground))',
+					neutral: 'hsl(var(--financial-neutral))',
+					'neutral-foreground': 'hsl(var(--financial-neutral-foreground))'
+				},
 				sidebar: {
 					DEFAULT: 'hsl(var(--sidebar-background))',
 					foreground: 'hsl(var(--sidebar-foreground))',
@@ -62,6 +74,11 @@ export default {
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
 				}
+			},
+			backgroundImage: {
+				'financial-gradient': 'linear-gradient(135deg, hsl(var(--financial-primary)), hsl(var(--financial-primary)) 60%, hsl(var(--financial-neutral)))',
+				'income-gradient': 'linear-gradient(135deg, hsl(var(--financial-income)), hsl(var(--financial-income)) 80%, hsl(var(--financial-neutral)))',
+				'expense-gradient': 'linear-gradient(135deg, hsl(var(--financial-expense)), hsl(var(--financial-expense)) 80%, hsl(var(--financial-neutral)))'
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
@@ -84,11 +101,26 @@ export default {
 					to: {
 						height: '0'
 					}
+				},
+				'slide-in': {
+					'0%': { transform: 'translateX(-100%)', opacity: '0' },
+					'100%': { transform: 'translateX(0)', opacity: '1' }
+				},
+				'fade-in': {
+					'0%': { opacity: '0', transform: 'translateY(20px)' },
+					'100%': { opacity: '1', transform: 'translateY(0)' }
+				},
+				'pulse-gentle': {
+					'0%, 100%': { transform: 'scale(1)' },
+					'50%': { transform: 'scale(1.05)' }
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'slide-in': 'slide-in 0.5s ease-out',
+				'fade-in': 'fade-in 0.6s ease-out',
+				'pulse-gentle': 'pulse-gentle 2s ease-in-out infinite'
 			}
 		}
 	},
