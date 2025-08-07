@@ -52,7 +52,7 @@ const Index = () => {
             <div className="flex items-center space-x-2 text-sm">
               <User className="w-4 h-4" />
               <span className="font-medium">
-                {user.user_metadata?.company_name || 'Empresa'}
+                {user.company_name || 'Empresa'}
               </span>
             </div>
             <Button variant="outline" size="sm" onClick={handleSignOut}>

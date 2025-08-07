@@ -56,13 +56,12 @@ const Auth = () => {
 
     setIsLoading(true);
     
-    const email = `${loginForm.cnpj.replace(/\D/g, '')}@bpofinanceiro.com`;
-    const { error } = await signIn(email, loginForm.password);
+    const { error } = await signIn(loginForm.cnpj.replace(/\D/g, ''), loginForm.password);
     
     if (error) {
       toast({
         title: "Erro no login",
-        description: "CNPJ ou senha incorretos",
+        description: error,
         variant: "destructive",
       });
     } else {
@@ -123,7 +122,7 @@ const Auth = () => {
     } else {
       toast({
         title: "Cadastro realizado com sucesso!",
-        description: "Verifique seu email para confirmar a conta",
+        description: "Agora você pode fazer login com seu CNPJ e senha",
       });
       setCurrentTab('login');
     }

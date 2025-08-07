@@ -1,13 +1,16 @@
-
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+
+interface User {
+  id: string;
+  cnpj: string;
+  company_name: string;
+}
 
 interface AuthContextType {
   user: User | null;
-  session: Session | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error?: string }>;
+  signIn: (cnpj: string, password: string) => Promise<{ error?: string }>;
   signUp: (cnpj: string, companyName: string, password: string) => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
 }
@@ -24,72 +27,75 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
+    // Check for existing user session in localStorage
+    const savedUser = localStorage.getItem('bpo_user');
+    if (savedUser) {
+      try {
+        setUser(JSON.parse(savedUser));
+      } catch (e) {
+        localStorage.removeItem('bpo_user');
       }
-    );
-
-    // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
+    }
+    setLoading(false);
   }, []);
 
-  const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) {
-      return { error: error.message };
+  const signIn = async (cnpj: string, password: string) => {
+    try {
+      const { data, error } = await supabase.rpc('authenticate_user', {
+        cnpj_input: cnpj,
+        password_input: password
+      });
+      
+      if (error || !data || data.length === 0) {
+        return { error: 'CNPJ ou senha incorretos' };
+      }
+      
+      const userData = {
+        id: data[0].profile_id,
+        cnpj: data[0].profile_cnpj,
+        company_name: data[0].profile_company_name
+      };
+      
+      setUser(userData);
+      localStorage.setItem('bpo_user', JSON.stringify(userData));
+      
+      return {};
+    } catch (error) {
+      return { error: 'Erro ao fazer login' };
     }
-    return {};
   };
 
   const signUp = async (cnpj: string, companyName: string, password: string) => {
-    // Use CNPJ as email with a domain
-    const email = `${cnpj}@bpofinanceiro.com`;
-    const redirectUrl = `${window.location.origin}/`;
-
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: redirectUrl,
-        data: {
-          cnpj,
-          company_name: companyName
+    try {
+      const { data, error } = await supabase.rpc('register_user', {
+        cnpj_input: cnpj,
+        company_name_input: companyName,
+        password_input: password
+      });
+      
+      if (error) {
+        if (error.message.includes('CNPJ já cadastrado')) {
+          return { error: 'CNPJ já cadastrado' };
         }
+        return { error: error.message };
       }
-    });
-
-    if (error) {
-      return { error: error.message };
+      
+      return {};
+    } catch (error) {
+      return { error: 'Erro ao criar conta' };
     }
-    return {};
   };
 
-
   const signOut = async () => {
-    await supabase.auth.signOut();
+    setUser(null);
+    localStorage.removeItem('bpo_user');
   };
 
   const value = {
     user,
-    session,
     loading,
     signIn,
     signUp,
