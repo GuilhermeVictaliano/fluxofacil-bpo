@@ -18,26 +18,26 @@ export type Database = {
         Row: {
           cnpj: string
           company_name: string
-          created_at: string
+          created_at: string | null
           id: string
-          password_hash: string | null
-          updated_at: string
+          password_hash: string
+          updated_at: string | null
         }
         Insert: {
           cnpj: string
           company_name: string
-          created_at?: string
-          id: string
-          password_hash?: string | null
-          updated_at?: string
+          created_at?: string | null
+          id?: string
+          password_hash: string
+          updated_at?: string | null
         }
         Update: {
           cnpj?: string
           company_name?: string
-          created_at?: string
+          created_at?: string | null
           id?: string
-          password_hash?: string | null
-          updated_at?: string
+          password_hash?: string
+          updated_at?: string | null
         }
         Relationships: []
       }
