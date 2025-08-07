@@ -20,6 +20,7 @@ export type Database = {
           company_name: string
           created_at: string
           id: string
+          password_hash: string | null
           updated_at: string
         }
         Insert: {
@@ -27,6 +28,7 @@ export type Database = {
           company_name: string
           created_at?: string
           id: string
+          password_hash?: string | null
           updated_at?: string
         }
         Update: {
@@ -34,6 +36,7 @@ export type Database = {
           company_name?: string
           created_at?: string
           id?: string
+          password_hash?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -91,7 +94,22 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      authenticate_user: {
+        Args: { cnpj_input: string; password_input: string }
+        Returns: {
+          profile_id: string
+          profile_cnpj: string
+          profile_company_name: string
+        }[]
+      }
+      register_user: {
+        Args: {
+          cnpj_input: string
+          company_name_input: string
+          password_input: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never
