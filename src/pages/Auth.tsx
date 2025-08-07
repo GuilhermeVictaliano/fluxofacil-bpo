@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
-import { Loader2, Building2, Lock, User, Mail } from 'lucide-react';
+import { Loader2, Building2, Lock, User, Phone, MessageCircle } from 'lucide-react';
 
 const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -19,10 +19,9 @@ const Auth = () => {
     password: '', 
     confirmPassword: '' 
   });
-  const [resetForm, setResetForm] = useState({ cnpj: '' });
   const [currentTab, setCurrentTab] = useState('login');
   
-  const { signIn, signUp, resetPassword } = useAuth();
+  const { signIn, signUp } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
@@ -132,38 +131,11 @@ const Auth = () => {
     setIsLoading(false);
   };
 
-  const handleResetPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!validateCNPJ(resetForm.cnpj)) {
-      toast({
-        title: "Erro",
-        description: "Por favor, insira um CNPJ válido",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsLoading(true);
-    
-    const email = `${resetForm.cnpj.replace(/\D/g, '')}@bpofinanceiro.com`;
-    const { error } = await resetPassword(email);
-    
-    if (error) {
-      toast({
-        title: "Erro",
-        description: "Erro ao enviar email de recuperação. Verifique se o CNPJ está cadastrado.",
-        variant: "destructive",
-      });
-    } else {
-      toast({
-        title: "Email enviado!",
-        description: "Verifique sua caixa de entrada para redefinir sua senha",
-      });
-      setCurrentTab('login');
-    }
-    
-    setIsLoading(false);
+  const handleContactRequest = () => {
+    toast({
+      title: "Informações copiadas!",
+      description: "Entre em contato conosco para recuperar sua senha",
+    });
   };
 
   return (
@@ -343,42 +315,42 @@ const Auth = () => {
             </TabsContent>
             
             <TabsContent value="reset">
-              <form onSubmit={handleResetPassword} className="space-y-4">
-                <div className="text-center mb-4">
-                  <Mail className="mx-auto h-8 w-8 text-primary mb-2" />
-                  <p className="text-sm text-muted-foreground">
-                    Digite seu CNPJ para receber um link de recuperação de senha
+              <div className="space-y-6">
+                <div className="text-center">
+                  <Lock className="mx-auto h-12 w-12 text-primary mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Esqueceu sua senha?</h3>
+                  <p className="text-sm text-muted-foreground mb-6">
+                    Entre em contato com nossa equipe para recuperar o acesso à sua conta
                   </p>
                 </div>
                 
-                <div className="space-y-2">
-                  <Label htmlFor="reset-cnpj">CNPJ</Label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="reset-cnpj"
-                      placeholder="00.000.000/0001-00"
-                      value={resetForm.cnpj}
-                      onChange={(e) => setResetForm({
-                        cnpj: formatCNPJ(e.target.value)
-                      })}
-                      className="pl-10"
-                      maxLength={18}
-                      required
-                    />
+                <div className="space-y-4">
+                  <div className="p-4 border rounded-lg space-y-3">
+                    <div className="flex items-center space-x-3">
+                      <Phone className="h-5 w-5 text-primary" />
+                      <div>
+                        <p className="font-medium">Telefone</p>
+                        <p className="text-sm text-muted-foreground">(11) 9999-9999</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center space-x-3">
+                      <MessageCircle className="h-5 w-5 text-primary" />
+                      <div>
+                        <p className="font-medium">WhatsApp</p>
+                        <p className="text-sm text-muted-foreground">(11) 9999-9999</p>
+                      </div>
+                    </div>
                   </div>
+                  
+                  <Button 
+                    onClick={handleContactRequest} 
+                    className="w-full"
+                    variant="outline"
+                  >
+                    Solicitar Recuperação de Senha
+                  </Button>
                 </div>
-                
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Enviando...
-                    </>
-                  ) : (
-                    'Enviar link de recuperação'
-                  )}
-                </Button>
                 
                 <div className="text-center">
                   <Button 
@@ -390,7 +362,7 @@ const Auth = () => {
                     Voltar ao login
                   </Button>
                 </div>
-              </form>
+              </div>
             </TabsContent>
           </Tabs>
         </CardContent>
