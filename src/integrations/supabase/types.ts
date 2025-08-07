@@ -45,7 +45,7 @@ export type Database = {
         Row: {
           amount: number
           category: string
-          created_at: string
+          created_at: string | null
           current_installment: number | null
           description: string
           due_date: string
@@ -54,13 +54,13 @@ export type Database = {
           payment_method: string
           status: string
           type: string
-          updated_at: string
+          updated_at: string | null
           user_id: string
         }
         Insert: {
           amount: number
           category: string
-          created_at?: string
+          created_at?: string | null
           current_installment?: number | null
           description: string
           due_date: string
@@ -69,13 +69,13 @@ export type Database = {
           payment_method: string
           status?: string
           type: string
-          updated_at?: string
+          updated_at?: string | null
           user_id: string
         }
         Update: {
           amount?: number
           category?: string
-          created_at?: string
+          created_at?: string | null
           current_installment?: number | null
           description?: string
           due_date?: string
@@ -84,7 +84,7 @@ export type Database = {
           payment_method?: string
           status?: string
           type?: string
-          updated_at?: string
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: []
