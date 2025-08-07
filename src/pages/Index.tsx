@@ -1,10 +1,9 @@
-
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { FinancialDashboard } from '@/components/FinancialDashboard';
+import FinancialDashboard from '@/components/FinancialDashboard';
 import { LogOut, Building2, User } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
