@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { PlusCircle, TrendingUp, TrendingDown, DollarSign, Calendar, FileText } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from '@/hooks/use-toast';
 
 type TransactionType = 'entrada' | 'saida';
 type PaymentMethod = 'a_vista' | 'parcelado';
@@ -17,16 +20,21 @@ interface Transaction {
   type: TransactionType;
   description: string;
   amount: number;
-  paymentMethod: PaymentMethod;
+  payment_method: PaymentMethod;
   installments?: number;
-  currentInstallment?: number;
-  dueDate: string;
+  current_installment?: number;
+  due_date: string;
   category: string;
   status: 'pendente' | 'pago' | 'vencido';
+  user_id: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 const FinancialDashboard = () => {
+  const { user } = useAuth();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     type: 'entrada' as TransactionType,
     description: '',
@@ -37,31 +45,105 @@ const FinancialDashboard = () => {
     category: ''
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (user) {
+      loadTransactions();
+    }
+  }, [user]);
+
+  const loadTransactions = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('user_id', user?.id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Erro ao carregar transações:', error);
+        toast({
+          title: "Erro",
+          description: "Erro ao carregar transações",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setTransactions((data as Transaction[]) || []);
+    } catch (error) {
+      console.error('Erro ao carregar transações:', error);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newTransaction: Transaction = {
-      id: Date.now().toString(),
-      type: formData.type,
-      description: formData.description,
-      amount: parseFloat(formData.amount),
-      paymentMethod: formData.paymentMethod,
-      installments: formData.paymentMethod === 'parcelado' ? parseInt(formData.installments) : 1,
-      currentInstallment: 1,
-      dueDate: formData.dueDate,
-      category: formData.category,
-      status: 'pendente'
-    };
     
-    setTransactions([...transactions, newTransaction]);
-    setFormData({
-      type: 'entrada',
-      description: '',
-      amount: '',
-      paymentMethod: 'a_vista',
-      installments: '1',
-      dueDate: '',
-      category: ''
-    });
+    if (!user) {
+      toast({
+        title: "Erro",
+        description: "Usuário não autenticado",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const { data, error } = await supabase
+        .from('transactions')
+        .insert({
+          user_id: user.id,
+          type: formData.type,
+          description: formData.description,
+          amount: parseFloat(formData.amount),
+          payment_method: formData.paymentMethod,
+          installments: formData.paymentMethod === 'parcelado' ? parseInt(formData.installments) : 1,
+          current_installment: 1,
+          due_date: formData.dueDate,
+          category: formData.category,
+          status: 'pendente'
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Erro ao salvar transação:', error);
+        toast({
+          title: "Erro",
+          description: "Erro ao salvar transação",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Sucesso!",
+        description: "Transação cadastrada com sucesso",
+      });
+
+      setFormData({
+        type: 'entrada',
+        description: '',
+        amount: '',
+        paymentMethod: 'a_vista',
+        installments: '1',
+        dueDate: '',
+        category: ''
+      });
+
+      // Recarregar transações
+      loadTransactions();
+    } catch (error) {
+      console.error('Erro ao salvar transação:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao salvar transação",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const totalEntradas = transactions
@@ -275,9 +357,9 @@ const FinancialDashboard = () => {
                     </div>
                   </div>
 
-                  <Button type="submit" className="w-full financial-primary hover:opacity-90">
+                  <Button type="submit" className="w-full financial-primary hover:opacity-90" disabled={loading}>
                     <PlusCircle className="h-4 w-4 mr-2" />
-                    Cadastrar Transação
+                    {loading ? 'Salvando...' : 'Cadastrar Transação'}
                   </Button>
                 </form>
               </CardContent>
@@ -312,16 +394,16 @@ const FinancialDashboard = () => {
                               >
                                 {transaction.type === 'entrada' ? '💰 Entrada' : '💸 Saída'}
                               </Badge>
-                              <Badge variant="outline">
-                                {transaction.paymentMethod === 'parcelado' 
-                                  ? `${transaction.currentInstallment}/${transaction.installments}x` 
-                                  : 'À Vista'}
-                              </Badge>
+                               <Badge variant="outline">
+                                 {transaction.payment_method === 'parcelado' 
+                                   ? `${transaction.current_installment}/${transaction.installments}x` 
+                                   : 'À Vista'}
+                               </Badge>
                             </div>
                             <h3 className="font-medium">{transaction.description}</h3>
-                            <p className="text-sm text-muted-foreground">
-                              {transaction.category} • Venc: {new Date(transaction.dueDate).toLocaleDateString('pt-BR')}
-                            </p>
+                             <p className="text-sm text-muted-foreground">
+                               {transaction.category} • Venc: {new Date(transaction.due_date).toLocaleDateString('pt-BR')}
+                             </p>
                           </div>
                           <div className="text-right">
                             <div className={`text-lg font-semibold ${
