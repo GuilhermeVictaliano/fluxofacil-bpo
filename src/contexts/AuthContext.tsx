@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { cleanupAuthState } from '@/utils/authCleanup';
+import { cnpjToEmail } from '@/utils/derivedEmail';
 
 interface User {
   id: string;
@@ -51,24 +52,71 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         await supabase.auth.signOut({ scope: 'global' });
       } catch {}
 
-      const { data, error } = await supabase.rpc('authenticate_user', {
-        cnpj_input: cnpj,
-        password_input: password
+      const email = cnpjToEmail(cnpj);
+
+      // 1) Try Supabase Auth first
+      let { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
       });
-      
-      if (error || !data || data.length === 0) {
-        return { error: 'CNPJ ou senha incorretos' };
+
+      // 2) If auth fails, fallback to legacy check and attempt migration to Auth
+      if (signInError) {
+        const { data: legacy, error: legacyError } = await supabase.rpc('authenticate_user', {
+          cnpj_input: cnpj,
+          password_input: password,
+        });
+        if (legacyError || !legacy || legacy.length === 0) {
+          return { error: 'CNPJ ou senha incorretos' };
+        }
+        // Create the auth user now (requires email confirm disabled for seamless UX)
+        const redirectUrl = `${window.location.origin}/`;
+        const { error: signUpErr } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            emailRedirectTo: redirectUrl,
+            data: { cnpj, company_name: legacy[0].profile_company_name },
+          },
+        });
+        if (signUpErr) {
+          return { error: signUpErr.message };
+        }
+        // Try sign-in again
+        const retry = await supabase.auth.signInWithPassword({ email, password });
+        signInData = retry.data;
+        signInError = retry.error;
+        if (signInError) {
+          return { error: signInError.message };
+        }
       }
-      
+
+      // 3) Migrate/link legacy data to current auth user (idempotent)
+      try {
+        await supabase.rpc('migrate_legacy_to_auth', { cnpj_input: cnpj });
+      } catch {}
+
+      // 4) Load profile tied to current auth user
+      const session = signInData?.session ?? (await supabase.auth.getSession()).data.session;
+      const uid = session?.user?.id;
+      if (!uid) {
+        return { error: 'Sessão inválida após login' };
+      }
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('cnpj, company_name, user_id')
+        .eq('user_id', uid)
+        .maybeSingle();
+
       const userData = {
-        id: data[0].profile_id,
-        cnpj: data[0].profile_cnpj,
-        company_name: data[0].profile_company_name
+        id: uid,
+        cnpj: profile?.cnpj || cnpj,
+        company_name: profile?.company_name || 'Minha Empresa',
       };
-      
+
       setUser(userData);
       localStorage.setItem('bpo_user', JSON.stringify(userData));
-      
       return {};
     } catch (error) {
       return { error: 'Erro ao fazer login' };
@@ -83,17 +131,52 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         await supabase.auth.signOut({ scope: 'global' });
       } catch {}
 
-      const { data, error } = await supabase.rpc('register_user', {
-        cnpj_input: cnpj,
-        company_name_input: companyName,
-        password_input: password
+      const email = cnpjToEmail(cnpj);
+      const redirectUrl = `${window.location.origin}/`;
+
+      const { data: signUpData, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: redirectUrl,
+          data: { cnpj, company_name: companyName },
+        },
       });
-      
+
       if (error) {
-        if (error.message.includes('CNPJ já cadastrado')) {
+        if (error.message.toLowerCase().includes('already') || error.message.toLowerCase().includes('registrado')) {
           return { error: 'CNPJ já cadastrado' };
         }
         return { error: error.message };
+      }
+
+      // Try to sign in immediately (works if email confirmation is disabled)
+      const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
+      if (signInErr) {
+        // If confirmation required, inform the user but keep flow clean
+        return { error: 'Conta criada. Verifique seu e-mail para confirmar o acesso.' };
+      }
+
+      // Link and load profile
+      try {
+        await supabase.rpc('migrate_legacy_to_auth', { cnpj_input: cnpj });
+      } catch {}
+
+      const session = (await supabase.auth.getSession()).data.session;
+      const uid = session?.user?.id as string | undefined;
+      if (uid) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('cnpj, company_name, user_id')
+          .eq('user_id', uid)
+          .maybeSingle();
+        const userData = {
+          id: uid,
+          cnpj: profile?.cnpj || cnpj,
+          company_name: profile?.company_name || companyName,
+        };
+        setUser(userData);
+        localStorage.setItem('bpo_user', JSON.stringify(userData));
       }
       
       return {};

@@ -20,7 +20,7 @@ export type Database = {
           company_name: string
           created_at: string | null
           id: string
-          password_hash: string
+          password_hash: string | null
           updated_at: string | null
           user_id: string | null
         }
@@ -29,7 +29,7 @@ export type Database = {
           company_name: string
           created_at?: string | null
           id?: string
-          password_hash: string
+          password_hash?: string | null
           updated_at?: string | null
           user_id?: string | null
         }
@@ -38,7 +38,7 @@ export type Database = {
           company_name?: string
           created_at?: string | null
           id?: string
-          password_hash?: string
+          password_hash?: string | null
           updated_at?: string | null
           user_id?: string | null
         }
@@ -104,6 +104,10 @@ export type Database = {
           profile_cnpj: string
           profile_company_name: string
         }[]
+      }
+      migrate_legacy_to_auth: {
+        Args: { cnpj_input: string }
+        Returns: undefined
       }
       register_user: {
         Args: {
