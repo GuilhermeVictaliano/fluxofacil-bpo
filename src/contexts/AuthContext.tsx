@@ -47,6 +47,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signIn = async (cnpj: string, password: string) => {
     try {
       // Clean up any existing auth/session to avoid limbo states
+      console.log('[Auth] signIn start', { cnpjMasked: (cnpj || '').slice(0,4) + '****' });
       cleanupAuthState();
       try {
         await supabase.auth.signOut({ scope: 'global' });
@@ -59,13 +60,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         email,
         password,
       });
+      console.log('[Auth] signInWithPassword result', { error: signInError?.message, hasSession: !!signInData?.session });
 
       // 2) If auth fails, fallback to legacy check and attempt migration to Auth
       if (signInError) {
+        console.log('[Auth] Falling back to legacy auth');
         const { data: legacy, error: legacyError } = await supabase.rpc('authenticate_user', {
           cnpj_input: cnpj,
           password_input: password,
         });
+        console.log('[Auth] Legacy RPC result', { ok: !legacyError && !!legacy?.length, error: legacyError?.message });
         if (legacyError || !legacy || legacy.length === 0) {
           return { error: 'CNPJ ou senha incorretos' };
         }
@@ -80,12 +84,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           },
         });
         if (signUpErr) {
+          console.warn('[Auth] signUp after legacy failed', signUpErr.message);
           return { error: signUpErr.message };
         }
         // Try sign-in again
         const retry = await supabase.auth.signInWithPassword({ email, password });
         signInData = retry.data;
         signInError = retry.error;
+        console.log('[Auth] Retry signIn result', { error: signInError?.message, hasSession: !!signInData?.session });
         if (signInError) {
           return { error: signInError.message };
         }
@@ -108,7 +114,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         .select('cnpj, company_name, user_id')
         .eq('user_id', uid)
         .maybeSingle();
-
+      console.log('[Auth] Loaded profile', { hasProfile: !!profile, uid });
       const userData = {
         id: uid,
         cnpj: profile?.cnpj || cnpj,
@@ -117,8 +123,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       setUser(userData);
       localStorage.setItem('bpo_user', JSON.stringify(userData));
+      console.log('[Auth] signIn success', { uid: userData.id, cnpj: userData.cnpj });
       return {};
     } catch (error) {
+      console.error('[Auth] signIn error', error);
       return { error: 'Erro ao fazer login' };
     }
   };
@@ -133,7 +141,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       const email = cnpjToEmail(cnpj);
       const redirectUrl = `${window.location.origin}/`;
-
+      console.log('[Auth] signUp start', { cnpjMasked: (cnpj || '').slice(0,4) + '****' });
       const { data: signUpData, error } = await supabase.auth.signUp({
         email,
         password,
@@ -142,7 +150,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           data: { cnpj, company_name: companyName },
         },
       });
-
+      console.log('[Auth] signUp result', { error: error?.message, hasUser: !!signUpData?.user });
       if (error) {
         if (error.message.toLowerCase().includes('already') || error.message.toLowerCase().includes('registrado')) {
           return { error: 'CNPJ já cadastrado' };
@@ -153,6 +161,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Try to sign in immediately (works if email confirmation is disabled)
       const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
       if (signInErr) {
+        console.warn('[Auth] signUp immediate signIn failed', signInErr.message);
         // If confirmation required, inform the user but keep flow clean
         return { error: 'Conta criada. Verifique seu e-mail para confirmar o acesso.' };
       }
@@ -177,10 +186,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         };
         setUser(userData);
         localStorage.setItem('bpo_user', JSON.stringify(userData));
+        console.log('[Auth] signUp success', { uid: userData.id, cnpj: userData.cnpj });
       }
       
       return {};
     } catch (error) {
+      console.error('[Auth] signUp error', error);
       return { error: 'Erro ao criar conta' };
     }
   };
@@ -188,6 +199,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signOut = async () => {
     try {
       // Clean up auth state and attempt a global sign out
+      console.log('[Auth] signOut start');
       cleanupAuthState();
       try {
         await supabase.auth.signOut({ scope: 'global' });
