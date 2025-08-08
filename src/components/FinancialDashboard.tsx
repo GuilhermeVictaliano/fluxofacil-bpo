@@ -7,8 +7,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { PlusCircle, TrendingUp, TrendingDown, DollarSign, Calendar, FileText } from 'lucide-react';
+import { PlusCircle, TrendingUp, TrendingDown, DollarSign, Calendar, FileText, Trash } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from 'recharts';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 
@@ -44,6 +45,10 @@ const FinancialDashboard = () => {
     dueDate: '',
     category: ''
   });
+
+  const [chartPeriod, setChartPeriod] = useState<'30' | '90' | '365' | 'all'>('90');
+  const [chartCategory, setChartCategory] = useState<string>('todas');
+  const [chartType, setChartType] = useState<'ambos' | 'entrada' | 'saida'>('ambos');
 
   useEffect(() => {
     if (user) {
@@ -141,8 +146,27 @@ const FinancialDashboard = () => {
         description: "Erro ao salvar transação",
         variant: "destructive",
       });
-    } finally {
+  } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    const confirmar = window.confirm('Deseja excluir esta transação? Esta ação não pode ser desfeita.');
+    if (!confirmar) return;
+
+    try {
+      const { error } = await supabase.from('transactions').delete().eq('id', id);
+      if (error) {
+        console.error('Erro ao excluir transação:', error);
+        toast({ title: 'Erro', description: 'Não foi possível excluir a transação.', variant: 'destructive' });
+        return;
+      }
+      setTransactions((prev) => prev.filter((t) => t.id !== id));
+      toast({ title: 'Excluído', description: 'Transação excluída com sucesso.' });
+    } catch (err) {
+      console.error('Erro ao excluir transação:', err);
+      toast({ title: 'Erro', description: 'Ocorreu um erro inesperado.', variant: 'destructive' });
     }
   };
 
@@ -162,6 +186,42 @@ const FinancialDashboard = () => {
       currency: 'BRL'
     }).format(value);
   };
+
+  // Filtros e dados do gráfico
+  const categorias = Array.from(new Set(transactions.map((t) => t.category))).sort();
+
+  const startDate = (() => {
+    const now = new Date();
+    if (chartPeriod === '30') {
+      now.setDate(now.getDate() - 30);
+      return now;
+    }
+    if (chartPeriod === '90') {
+      now.setDate(now.getDate() - 90);
+      return now;
+    }
+    if (chartPeriod === '365') {
+      now.setDate(now.getDate() - 365);
+      return now;
+    }
+    return new Date(0);
+  })();
+
+  const filteredForChart = transactions.filter((t) => {
+    const d = new Date(t.due_date);
+    const categoryOk = chartCategory === 'todas' || t.category === chartCategory;
+    return d >= startDate && categoryOk;
+  });
+
+  const aggregate = new Map<string, { date: string; entrada: number; saida: number }>();
+  for (const t of filteredForChart) {
+    const key = new Date(t.due_date).toISOString().slice(0, 10);
+    if (!aggregate.has(key)) aggregate.set(key, { date: key, entrada: 0, saida: 0 });
+    const item = aggregate.get(key)!;
+    if (t.type === 'entrada') item.entrada += t.amount;
+    else item.saida += t.amount;
+  }
+  const chartData = Array.from(aggregate.values()).sort((a, b) => a.date.localeCompare(b.date));
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-financial-primary/5 via-background to-financial-neutral/5">
@@ -237,7 +297,7 @@ const FinancialDashboard = () => {
 
         {/* Tabs */}
         <Tabs defaultValue="cadastro" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2 lg:w-[400px]">
+          <TabsList className="grid w-full grid-cols-3 lg:w-[520px]">
             <TabsTrigger value="cadastro" className="space-x-2">
               <PlusCircle className="h-4 w-4" />
               <span>Nova Transação</span>
@@ -245,6 +305,10 @@ const FinancialDashboard = () => {
             <TabsTrigger value="historico" className="space-x-2">
               <FileText className="h-4 w-4" />
               <span>Histórico</span>
+            </TabsTrigger>
+            <TabsTrigger value="analise" className="space-x-2">
+              <TrendingUp className="h-4 w-4" />
+              <span>Gráficos</span>
             </TabsTrigger>
           </TabsList>
 
@@ -405,19 +469,113 @@ const FinancialDashboard = () => {
                                {transaction.category} • Venc: {new Date(transaction.due_date).toLocaleDateString('pt-BR')}
                              </p>
                           </div>
-                          <div className="text-right">
+                          <div className="text-right flex flex-col items-end gap-2">
                             <div className={`text-lg font-semibold ${
                               transaction.type === 'entrada' ? 'text-financial-income' : 'text-financial-expense'
                             }`}>
                               {transaction.type === 'entrada' ? '+' : '-'} {formatCurrency(transaction.amount)}
                             </div>
-                            <Badge variant="outline" className="mt-1">
-                              {transaction.status}
-                            </Badge>
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className="mt-1">
+                                {transaction.status}
+                              </Badge>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                aria-label="Excluir transação"
+                                title="Excluir transação"
+                                onClick={() => handleDelete(transaction.id)}
+                              >
+                                <Trash className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </div>
                         </div>
                       </div>
                     ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="analise" className="space-y-6">
+            <Card className="financial-card">
+              <CardHeader>
+                <CardTitle>Gráfico de Entradas x Saídas</CardTitle>
+                <CardDescription>Visualize o fluxo financeiro ao longo do tempo</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Filtros */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label>Período</Label>
+                    <Select value={chartPeriod} onValueChange={(v) => setChartPeriod(v as any)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="30">Últimos 30 dias</SelectItem>
+                        <SelectItem value="90">Últimos 90 dias</SelectItem>
+                        <SelectItem value="365">Últimos 12 meses</SelectItem>
+                        <SelectItem value="all">Tudo</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Categoria</Label>
+                    <Select value={chartCategory} onValueChange={(v) => setChartCategory(v)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Todas" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="todas">Todas</SelectItem>
+                        {categorias.map((c) => (
+                          <SelectItem key={c} value={c}>{c}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Tipo</Label>
+                    <Select value={chartType} onValueChange={(v) => setChartType(v as any)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Ambos" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ambos">Ambos</SelectItem>
+                        <SelectItem value="entrada">Entradas</SelectItem>
+                        <SelectItem value="saida">Saídas</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Gráfico */}
+                {chartData.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>Sem dados para o período/filters selecionados.</p>
+                  </div>
+                ) : (
+                  <div className="w-full h-80">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={chartData} margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="date" tickFormatter={(v) => new Date(v).toLocaleDateString('pt-BR')} />
+                        <YAxis />
+                        <Tooltip formatter={(v: any) => formatCurrency(Number(v))} labelFormatter={(l) => new Date(l).toLocaleDateString('pt-BR')} />
+                        <Legend />
+                        {(chartType === 'ambos' || chartType === 'entrada') && (
+                          <Line type="monotone" dataKey="entrada" name="Entradas" stroke={`hsl(var(--financial-income))`} strokeWidth={2} dot={false} />
+                        )}
+                        {(chartType === 'ambos' || chartType === 'saida') && (
+                          <Line type="monotone" dataKey="saida" name="Saídas" stroke={`hsl(var(--financial-expense))`} strokeWidth={2} dot={false} />
+                        )}
+                      </LineChart>
+                    </ResponsiveContainer>
                   </div>
                 )}
               </CardContent>
