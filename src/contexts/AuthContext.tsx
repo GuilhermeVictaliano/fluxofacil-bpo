@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { cleanupAuthState } from '@/utils/authCleanup';
 
 interface User {
   id: string;
@@ -44,6 +45,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signIn = async (cnpj: string, password: string) => {
     try {
+      // Clean up any existing auth/session to avoid limbo states
+      cleanupAuthState();
+      try {
+        await supabase.auth.signOut({ scope: 'global' });
+      } catch {}
+
       const { data, error } = await supabase.rpc('authenticate_user', {
         cnpj_input: cnpj,
         password_input: password
@@ -70,6 +77,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signUp = async (cnpj: string, companyName: string, password: string) => {
     try {
+      // Clean previous sessions/tokens before registering
+      cleanupAuthState();
+      try {
+        await supabase.auth.signOut({ scope: 'global' });
+      } catch {}
+
       const { data, error } = await supabase.rpc('register_user', {
         cnpj_input: cnpj,
         company_name_input: companyName,
@@ -90,8 +103,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const signOut = async () => {
-    setUser(null);
-    localStorage.removeItem('bpo_user');
+    try {
+      // Clean up auth state and attempt a global sign out
+      cleanupAuthState();
+      try {
+        await supabase.auth.signOut({ scope: 'global' });
+      } catch {}
+    } finally {
+      setUser(null);
+      localStorage.removeItem('bpo_user');
+      // Force a clean reload to prevent limbo states
+      window.location.href = '/auth';
+    }
   };
 
   const value = {
