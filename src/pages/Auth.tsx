@@ -328,8 +328,8 @@ const Auth = () => {
                     <div className="flex items-center space-x-3">
                       <Phone className="h-5 w-5 text-primary" />
                       <div>
-                        <p className="font-medium">Telefone</p>
-                        <p className="text-sm text-muted-foreground">(11) 9999-9999</p>
+                        <p className="font-medium">E-mail</p>
+                        <p className="text-sm text-muted-foreground">guilhermesint.gerencia@gmail.com</p>
                       </div>
                     </div>
                     
@@ -337,7 +337,7 @@ const Auth = () => {
                       <MessageCircle className="h-5 w-5 text-primary" />
                       <div>
                         <p className="font-medium">WhatsApp</p>
-                        <p className="text-sm text-muted-foreground">(11) 9999-9999</p>
+                        <p className="text-sm text-muted-foreground">(15) 996649167</p>
                       </div>
                     </div>
                   </div>
