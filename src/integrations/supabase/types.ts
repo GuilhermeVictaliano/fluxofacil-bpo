@@ -22,6 +22,7 @@ export type Database = {
           id: string
           password_hash: string
           updated_at: string | null
+          user_id: string | null
         }
         Insert: {
           cnpj: string
@@ -30,6 +31,7 @@ export type Database = {
           id?: string
           password_hash: string
           updated_at?: string | null
+          user_id?: string | null
         }
         Update: {
           cnpj?: string
@@ -38,6 +40,7 @@ export type Database = {
           id?: string
           password_hash?: string
           updated_at?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
