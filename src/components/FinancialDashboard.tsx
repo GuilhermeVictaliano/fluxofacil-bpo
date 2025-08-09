@@ -7,11 +7,12 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { PlusCircle, TrendingUp, TrendingDown, DollarSign, Calendar, FileText, Trash } from 'lucide-react';
+import { PlusCircle, TrendingUp, TrendingDown, DollarSign, Calendar, FileText, Trash, ArrowUpDown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from 'recharts';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
+import { formatCurrencyInput, parseCurrencyInput, formatCurrency } from '@/utils/currencyFormatter';
 
 type TransactionType = 'entrada' | 'saida';
 type PaymentMethod = 'a_vista' | 'parcelado';
@@ -30,6 +31,7 @@ interface Transaction {
   user_id: string;
   created_at?: string;
   updated_at?: string;
+  creation_date?: string;
 }
 
 const FinancialDashboard = () => {
@@ -46,9 +48,13 @@ const FinancialDashboard = () => {
     category: ''
   });
 
-  const [chartPeriod, setChartPeriod] = useState<'30' | '90' | '365' | 'all'>('90');
+  const [chartPeriod, setChartPeriod] = useState<'30' | '90' | '365' | 'all' | 'custom'>('90');
   const [chartCategory, setChartCategory] = useState<string>('todas');
   const [chartType, setChartType] = useState<'ambos' | 'entrada' | 'saida'>('ambos');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
+  const [sortBy, setSortBy] = useState<'creation_date' | 'due_date'>('creation_date');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   useEffect(() => {
     if (user) {
@@ -74,7 +80,16 @@ const FinancialDashboard = () => {
         return;
       }
 
-      setTransactions((data as Transaction[]) || []);
+      // Update status based on due date
+      const today = new Date().toISOString().split('T')[0];
+      const updatedData = (data as Transaction[]).map(transaction => ({
+        ...transaction,
+        status: transaction.due_date <= today && transaction.status === 'pendente' 
+          ? 'vencido' as const 
+          : transaction.status
+      }));
+
+      setTransactions(updatedData || []);
     } catch (error) {
       console.error('Erro ao carregar transações:', error);
     }
@@ -101,7 +116,7 @@ const FinancialDashboard = () => {
           user_id: user.id,
           type: formData.type,
           description: formData.description,
-          amount: parseFloat(formData.amount),
+          amount: parseCurrencyInput(formData.amount),
           payment_method: formData.paymentMethod,
           installments: formData.paymentMethod === 'parcelado' ? parseInt(formData.installments) : 1,
           current_installment: 1,
@@ -180,37 +195,55 @@ const FinancialDashboard = () => {
 
   const saldo = totalEntradas - totalSaidas;
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(value);
+  // Get sorted transactions for display
+  const getSortedTransactions = () => {
+    return [...transactions].sort((a, b) => {
+      const dateA = sortBy === 'creation_date' 
+        ? new Date(a.creation_date || a.created_at || '').getTime()
+        : new Date(a.due_date).getTime();
+      const dateB = sortBy === 'creation_date'
+        ? new Date(b.creation_date || b.created_at || '').getTime()
+        : new Date(b.due_date).getTime();
+      
+      return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
+    });
   };
 
   // Filtros e dados do gráfico
   const categorias = Array.from(new Set(transactions.map((t) => t.category))).sort();
 
-  const startDate = (() => {
+  const getDateRange = () => {
+    if (chartPeriod === 'custom' && customStartDate && customEndDate) {
+      return {
+        start: new Date(customStartDate),
+        end: new Date(customEndDate)
+      };
+    }
+    
     const now = new Date();
     if (chartPeriod === '30') {
-      now.setDate(now.getDate() - 30);
-      return now;
+      const start = new Date(now);
+      start.setDate(start.getDate() - 30);
+      return { start, end: now };
     }
     if (chartPeriod === '90') {
-      now.setDate(now.getDate() - 90);
-      return now;
+      const start = new Date(now);
+      start.setDate(start.getDate() - 90);
+      return { start, end: now };
     }
     if (chartPeriod === '365') {
-      now.setDate(now.getDate() - 365);
-      return now;
+      const start = new Date(now);
+      start.setDate(start.getDate() - 365);
+      return { start, end: now };
     }
-    return new Date(0);
-  })();
+    return { start: new Date(0), end: now };
+  };
 
   const filteredForChart = transactions.filter((t) => {
+    const { start, end } = getDateRange();
     const d = new Date(t.due_date);
     const categoryOk = chartCategory === 'todas' || t.category === chartCategory;
-    return d >= startDate && categoryOk;
+    return d >= start && d <= end && categoryOk;
   });
 
   const aggregate = new Map<string, { date: string; entrada: number; saida: number }>();
@@ -339,18 +372,19 @@ const FinancialDashboard = () => {
                       </Select>
                     </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="amount">Valor (R$)</Label>
-                      <Input
-                        id="amount"
-                        type="number"
-                        step="0.01"
-                        placeholder="0,00"
-                        value={formData.amount}
-                        onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                        required
-                      />
-                    </div>
+                     <div className="space-y-2">
+                       <Label htmlFor="amount">Valor (R$)</Label>
+                       <Input
+                         id="amount"
+                         placeholder="0,00"
+                         value={formData.amount}
+                         onChange={(e) => {
+                           const formatted = formatCurrencyInput(e.target.value);
+                           setFormData({ ...formData, amount: formatted });
+                         }}
+                         required
+                       />
+                     </div>
                   </div>
 
                   <div className="space-y-2">
@@ -439,15 +473,42 @@ const FinancialDashboard = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
+                {/* Filtros de ordenação */}
+                <div className="flex flex-col sm:flex-row gap-4 mb-6 p-4 bg-muted/50 rounded-lg">
+                  <div className="flex-1">
+                    <Label htmlFor="sort-by">Ordenar por</Label>
+                    <Select value={sortBy} onValueChange={(value: 'creation_date' | 'due_date') => setSortBy(value)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="creation_date">Data de Criação</SelectItem>
+                        <SelectItem value="due_date">Data de Vencimento</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex-1">
+                    <Label htmlFor="sort-order">Ordem</Label>
+                    <Select value={sortOrder} onValueChange={(value: 'asc' | 'desc') => setSortOrder(value)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="desc">Mais recente primeiro</SelectItem>
+                        <SelectItem value="asc">Mais antigo primeiro</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
                 {transactions.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
                     <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
                     <p>Nenhuma transação cadastrada ainda</p>
                     <p className="text-sm">Cadastre sua primeira transação para começar</p>
                   </div>
-                ) : (
-                  <div className="space-y-4">
-                    {transactions.map((transaction) => (
+                 ) : (
+                   <div className="space-y-4">
+                     {getSortedTransactions().map((transaction) => (
                       <div key={transaction.id} className="data-table-row p-4 rounded-lg">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between space-y-2 sm:space-y-0">
                           <div className="space-y-1">
@@ -506,52 +567,79 @@ const FinancialDashboard = () => {
                 <CardDescription>Visualize o fluxo financeiro ao longo do tempo</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Filtros */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label>Período</Label>
-                    <Select value={chartPeriod} onValueChange={(v) => setChartPeriod(v as any)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="30">Últimos 30 dias</SelectItem>
-                        <SelectItem value="90">Últimos 90 dias</SelectItem>
-                        <SelectItem value="365">Últimos 12 meses</SelectItem>
-                        <SelectItem value="all">Tudo</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                 {/* Filtros */}
+                 <div className="space-y-4">
+                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                     <div className="space-y-2">
+                       <Label>Período</Label>
+                       <Select value={chartPeriod} onValueChange={(v) => setChartPeriod(v as any)}>
+                         <SelectTrigger>
+                           <SelectValue placeholder="Selecione" />
+                         </SelectTrigger>
+                         <SelectContent>
+                           <SelectItem value="30">Últimos 30 dias</SelectItem>
+                           <SelectItem value="90">Últimos 90 dias</SelectItem>
+                           <SelectItem value="365">Últimos 12 meses</SelectItem>
+                           <SelectItem value="all">Tudo</SelectItem>
+                           <SelectItem value="custom">Período Personalizado</SelectItem>
+                         </SelectContent>
+                       </Select>
+                     </div>
 
-                  <div className="space-y-2">
-                    <Label>Categoria</Label>
-                    <Select value={chartCategory} onValueChange={(v) => setChartCategory(v)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Todas" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="todas">Todas</SelectItem>
-                        {categorias.map((c) => (
-                          <SelectItem key={c} value={c}>{c}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                     <div className="space-y-2">
+                       <Label>Categoria</Label>
+                       <Select value={chartCategory} onValueChange={(v) => setChartCategory(v)}>
+                         <SelectTrigger>
+                           <SelectValue placeholder="Todas" />
+                         </SelectTrigger>
+                         <SelectContent>
+                           <SelectItem value="todas">Todas</SelectItem>
+                           {categorias.map((c) => (
+                             <SelectItem key={c} value={c}>{c}</SelectItem>
+                           ))}
+                         </SelectContent>
+                       </Select>
+                     </div>
 
-                  <div className="space-y-2">
-                    <Label>Tipo</Label>
-                    <Select value={chartType} onValueChange={(v) => setChartType(v as any)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Ambos" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="ambos">Ambos</SelectItem>
-                        <SelectItem value="entrada">Entradas</SelectItem>
-                        <SelectItem value="saida">Saídas</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
+                     <div className="space-y-2">
+                       <Label>Tipo</Label>
+                       <Select value={chartType} onValueChange={(v) => setChartType(v as any)}>
+                         <SelectTrigger>
+                           <SelectValue placeholder="Ambos" />
+                         </SelectTrigger>
+                         <SelectContent>
+                           <SelectItem value="ambos">Ambos</SelectItem>
+                           <SelectItem value="entrada">Entradas</SelectItem>
+                           <SelectItem value="saida">Saídas</SelectItem>
+                         </SelectContent>
+                       </Select>
+                     </div>
+                   </div>
+
+                   {/* Campos de data customizada */}
+                   {chartPeriod === 'custom' && (
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
+                       <div className="space-y-2">
+                         <Label>Data Inicial</Label>
+                         <Input
+                           type="date"
+                           value={customStartDate}
+                           onChange={(e) => setCustomStartDate(e.target.value)}
+                           placeholder="dd/mm/aaaa"
+                         />
+                       </div>
+                       <div className="space-y-2">
+                         <Label>Data Final</Label>
+                         <Input
+                           type="date"
+                           value={customEndDate}
+                           onChange={(e) => setCustomEndDate(e.target.value)}
+                           placeholder="dd/mm/aaaa"
+                         />
+                       </div>
+                     </div>
+                   )}
+                 </div>
 
                 {/* Gráfico */}
                 {chartData.length === 0 ? (

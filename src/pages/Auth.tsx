@@ -32,23 +32,30 @@ const Auth = () => {
     }
   }, [searchParams]);
 
-  const formatCNPJ = (cnpj: string) => {
-    const numbers = cnpj.replace(/\D/g, '');
-    return numbers.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+  const formatDocument = (value: string) => {
+    const numbers = value.replace(/\D/g, '');
+    
+    if (numbers.length <= 11) {
+      // CPF format
+      return numbers.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+    } else {
+      // CNPJ format
+      return numbers.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+    }
   };
 
-  const validateCNPJ = (cnpj: string) => {
-    const numbers = cnpj.replace(/\D/g, '');
-    return numbers.length === 14;
+  const validateDocument = (value: string) => {
+    const numbers = value.replace(/\D/g, '');
+    return numbers.length === 11 || numbers.length === 14; // CPF: 11 digits, CNPJ: 14 digits
   };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!validateCNPJ(loginForm.cnpj)) {
+    if (!validateDocument(loginForm.cnpj)) {
       toast({
         title: "Erro",
-        description: "Por favor, insira um CNPJ válido",
+        description: "Por favor, insira um CPF ou CNPJ válido",
         variant: "destructive",
       });
       return;
@@ -78,10 +85,10 @@ const Auth = () => {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!validateCNPJ(signupForm.cnpj)) {
+    if (!validateDocument(signupForm.cnpj)) {
       toast({
         title: "Erro",
-        description: "Por favor, insira um CNPJ válido",
+        description: "Por favor, insira um CPF ou CNPJ válido",
         variant: "destructive",
       });
       return;
@@ -160,24 +167,24 @@ const Auth = () => {
             
             <TabsContent value="login">
               <form onSubmit={handleLogin} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="login-cnpj">CNPJ</Label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="login-cnpj"
-                      placeholder="00.000.000/0001-00"
-                      value={loginForm.cnpj}
-                      onChange={(e) => setLoginForm({
-                        ...loginForm, 
-                        cnpj: formatCNPJ(e.target.value)
-                      })}
-                      className="pl-10"
-                      maxLength={18}
-                      required
-                    />
-                  </div>
-                </div>
+                 <div className="space-y-2">
+                   <Label htmlFor="login-cnpj">CPF ou CNPJ</Label>
+                   <div className="relative">
+                     <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                     <Input
+                       id="login-cnpj"
+                       placeholder="000.000.000-00 ou 00.000.000/0001-00"
+                       value={loginForm.cnpj}
+                       onChange={(e) => setLoginForm({
+                         ...loginForm, 
+                         cnpj: formatDocument(e.target.value)
+                       })}
+                       className="pl-10"
+                       maxLength={18}
+                       required
+                     />
+                   </div>
+                 </div>
                 
                 <div className="space-y-2">
                   <Label htmlFor="login-password">Senha</Label>
@@ -224,42 +231,42 @@ const Auth = () => {
             
             <TabsContent value="signup">
               <form onSubmit={handleSignup} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="signup-cnpj">CNPJ</Label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="signup-cnpj"
-                      placeholder="00.000.000/0001-00"
-                      value={signupForm.cnpj}
-                      onChange={(e) => setSignupForm({
-                        ...signupForm, 
-                        cnpj: formatCNPJ(e.target.value)
-                      })}
-                      className="pl-10"
-                      maxLength={18}
-                      required
-                    />
-                  </div>
-                </div>
+                 <div className="space-y-2">
+                   <Label htmlFor="signup-cnpj">CPF ou CNPJ</Label>
+                   <div className="relative">
+                     <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                     <Input
+                       id="signup-cnpj"
+                       placeholder="000.000.000-00 ou 00.000.000/0001-00"
+                       value={signupForm.cnpj}
+                       onChange={(e) => setSignupForm({
+                         ...signupForm, 
+                         cnpj: formatDocument(e.target.value)
+                       })}
+                       className="pl-10"
+                       maxLength={18}
+                       required
+                     />
+                   </div>
+                 </div>
                 
-                <div className="space-y-2">
-                  <Label htmlFor="company-name">Nome da Empresa</Label>
-                  <div className="relative">
-                    <Building2 className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="company-name"
-                      placeholder="Nome da sua empresa"
-                      value={signupForm.companyName}
-                      onChange={(e) => setSignupForm({
-                        ...signupForm, 
-                        companyName: e.target.value
-                      })}
-                      className="pl-10"
-                      required
-                    />
-                  </div>
-                </div>
+                 <div className="space-y-2">
+                   <Label htmlFor="company-name">Nome/Apelido Corporativo</Label>
+                   <div className="relative">
+                     <Building2 className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                     <Input
+                       id="company-name"
+                       placeholder="Nome/Apelido Corporativo"
+                       value={signupForm.companyName}
+                       onChange={(e) => setSignupForm({
+                         ...signupForm, 
+                         companyName: e.target.value
+                       })}
+                       className="pl-10"
+                       required
+                     />
+                   </div>
+                 </div>
                 
                 <div className="space-y-2">
                   <Label htmlFor="signup-password">Senha</Label>
