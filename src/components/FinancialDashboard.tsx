@@ -7,12 +7,14 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { PlusCircle, TrendingUp, TrendingDown, DollarSign, Calendar, FileText, Trash, ArrowUpDown } from 'lucide-react';
+import { PlusCircle, TrendingUp, TrendingDown, DollarSign, Calendar, FileText, Trash, ArrowUpDown, Settings } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from 'recharts';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { formatCurrencyInput, parseCurrencyInput, formatCurrency } from '@/utils/currencyFormatter';
+import { PatternsManager } from '@/components/PatternsManager';
+import { PatternInput } from '@/components/PatternInput';
 
 type TransactionType = 'entrada' | 'saida';
 type PaymentMethod = 'a_vista' | 'parcelado';
@@ -43,7 +45,7 @@ const FinancialDashboard = () => {
     description: '',
     amount: '',
     paymentMethod: 'a_vista' as PaymentMethod,
-    installments: '1',
+    installments: '2',
     dueDate: '',
     category: ''
   });
@@ -110,44 +112,89 @@ const FinancialDashboard = () => {
     setLoading(true);
 
     try {
-      const { data, error } = await supabase
-        .from('transactions')
-        .insert({
-          user_id: user.id,
-          type: formData.type,
-          description: formData.description,
-          amount: parseCurrencyInput(formData.amount),
-          payment_method: formData.paymentMethod,
-          installments: formData.paymentMethod === 'parcelado' ? parseInt(formData.installments) : 1,
-          current_installment: 1,
-          due_date: formData.dueDate,
-          category: formData.category,
-          status: 'pendente'
-        })
-        .select()
-        .single();
+      const installmentCount = formData.paymentMethod === 'parcelado' ? parseInt(formData.installments) : 1;
+      const amount = parseCurrencyInput(formData.amount);
+      
+      // Se for parcelado e tem mais de 1 parcela, criar múltiplos registros
+      if (installmentCount > 1) {
+        const transactions = [];
+        const baseDueDate = new Date(formData.dueDate);
+        
+        for (let i = 0; i < installmentCount; i++) {
+          const dueDate = new Date(baseDueDate);
+          dueDate.setMonth(dueDate.getMonth() + i);
+          
+          transactions.push({
+            user_id: user.id,
+            type: formData.type,
+            description: formData.description,
+            amount: amount,
+            payment_method: formData.paymentMethod,
+            installments: installmentCount,
+            current_installment: i + 1,
+            due_date: dueDate.toISOString().split('T')[0], // Format as YYYY-MM-DD
+            category: formData.category,
+            status: 'pendente'
+          });
+        }
 
-      if (error) {
-        console.error('Erro ao salvar transação:', error);
+        const { error } = await supabase
+          .from('transactions')
+          .insert(transactions);
+
+        if (error) {
+          console.error('Erro ao salvar transações:', error);
+          toast({
+            title: "Erro",
+            description: "Erro ao salvar transações",
+            variant: "destructive",
+          });
+          return;
+        }
+
         toast({
-          title: "Erro",
-          description: "Erro ao salvar transação",
-          variant: "destructive",
+          title: "Sucesso!",
+          description: `${installmentCount} parcelas cadastradas com sucesso`,
         });
-        return;
-      }
+      } else {
+        // Transação única
+        const { error } = await supabase
+          .from('transactions')
+          .insert({
+            user_id: user.id,
+            type: formData.type,
+            description: formData.description,
+            amount: amount,
+            payment_method: formData.paymentMethod,
+            installments: 1,
+            current_installment: 1,
+            due_date: formData.dueDate,
+            category: formData.category,
+            status: 'pendente'
+          });
 
-      toast({
-        title: "Sucesso!",
-        description: "Transação cadastrada com sucesso",
-      });
+        if (error) {
+          console.error('Erro ao salvar transação:', error);
+          toast({
+            title: "Erro",
+            description: "Erro ao salvar transação",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        toast({
+          title: "Sucesso!",
+          description: "Transação cadastrada com sucesso",
+        });
+      }
 
       setFormData({
         type: 'entrada',
         description: '',
         amount: '',
         paymentMethod: 'a_vista',
-        installments: '1',
+        installments: '2',
         dueDate: '',
         category: ''
       });
@@ -161,7 +208,7 @@ const FinancialDashboard = () => {
         description: "Erro ao salvar transação",
         variant: "destructive",
       });
-  } finally {
+    } finally {
       setLoading(false);
     }
   };
@@ -330,7 +377,7 @@ const FinancialDashboard = () => {
 
         {/* Tabs */}
         <Tabs defaultValue="cadastro" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 lg:w-[520px]">
+          <TabsList className="grid w-full grid-cols-4 lg:w-[680px]">
             <TabsTrigger value="cadastro" className="space-x-2">
               <PlusCircle className="h-4 w-4" />
               <span>Nova Transação</span>
@@ -342,6 +389,10 @@ const FinancialDashboard = () => {
             <TabsTrigger value="analise" className="space-x-2">
               <TrendingUp className="h-4 w-4" />
               <span>Gráficos</span>
+            </TabsTrigger>
+            <TabsTrigger value="padroes" className="space-x-2">
+              <Settings className="h-4 w-4" />
+              <span>Criar Padrões</span>
             </TabsTrigger>
           </TabsList>
 
@@ -389,12 +440,12 @@ const FinancialDashboard = () => {
 
                   <div className="space-y-2">
                     <Label htmlFor="description">Descrição</Label>
-                    <Input
-                      id="description"
-                      placeholder="Descreva a transação..."
+                    <PatternInput
+                      type={formData.type}
+                      patternType="description"
                       value={formData.description}
-                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                      required
+                      onChange={(value) => setFormData({ ...formData, description: value })}
+                      placeholder="Descreva a transação..."
                     />
                   </div>
 
@@ -445,12 +496,12 @@ const FinancialDashboard = () => {
 
                     <div className="space-y-2">
                       <Label htmlFor="category">Categoria</Label>
-                      <Input
-                        id="category"
-                        placeholder="Ex: Vendas, Fornecedores, etc."
+                      <PatternInput
+                        type={formData.type}
+                        patternType="category"
                         value={formData.category}
-                        onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                        required
+                        onChange={(value) => setFormData({ ...formData, category: value })}
+                        placeholder="Ex: Vendas, Fornecedores, etc."
                       />
                     </div>
                   </div>
@@ -666,6 +717,20 @@ const FinancialDashboard = () => {
                     </ResponsiveContainer>
                   </div>
                 )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="padroes" className="space-y-6">
+            <Card className="financial-card">
+              <CardHeader>
+                <CardTitle>Gerenciar Padrões</CardTitle>
+                <CardDescription>
+                  Crie padrões de descrições e categorias para agilizar o cadastro de transações
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <PatternsManager />
               </CardContent>
             </Card>
           </TabsContent>

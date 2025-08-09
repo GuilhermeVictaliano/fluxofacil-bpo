@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      patterns: {
+        Row: {
+          created_at: string
+          id: string
+          pattern_type: string
+          type: string
+          updated_at: string
+          user_id: string
+          value: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          pattern_type: string
+          type: string
+          updated_at?: string
+          user_id: string
+          value: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          pattern_type?: string
+          type?: string
+          updated_at?: string
+          user_id?: string
+          value?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           cnpj: string
