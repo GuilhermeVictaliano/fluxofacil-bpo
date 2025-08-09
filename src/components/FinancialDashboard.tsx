@@ -121,7 +121,7 @@ const FinancialDashboard = () => {
         const baseDueDate = new Date(formData.dueDate);
         
         for (let i = 0; i < installmentCount; i++) {
-          const dueDate = new Date(baseDueDate);
+          const dueDate = new Date(formData.dueDate + 'T00:00:00');
           dueDate.setMonth(dueDate.getMonth() + i);
           
           transactions.push({
@@ -262,8 +262,8 @@ const FinancialDashboard = () => {
   const getDateRange = () => {
     if (chartPeriod === 'custom' && customStartDate && customEndDate) {
       return {
-        start: new Date(customStartDate),
-        end: new Date(customEndDate)
+        start: new Date(customStartDate + 'T00:00:00'),
+        end: new Date(customEndDate + 'T23:59:59')
       };
     }
     
@@ -288,9 +288,10 @@ const FinancialDashboard = () => {
 
   const filteredForChart = transactions.filter((t) => {
     const { start, end } = getDateRange();
-    const d = new Date(t.due_date);
+    const d = new Date(t.due_date + 'T00:00:00');
     const categoryOk = chartCategory === 'todas' || t.category === chartCategory;
-    return d >= start && d <= end && categoryOk;
+    const typeOk = chartType === 'ambos' || t.type === chartType;
+    return d >= start && d <= end && categoryOk && typeOk;
   });
 
   const aggregate = new Map<string, { date: string; entrada: number; saida: number }>();
