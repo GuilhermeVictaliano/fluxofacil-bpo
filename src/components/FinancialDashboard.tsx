@@ -258,8 +258,15 @@ const FinancialDashboard = () => {
     });
   };
 
-  // Filtros e dados do gráfico
-  const categorias = Array.from(new Set(transactions.map((t) => t.category))).sort();
+  // ========== FILTROS E DADOS DO GRÁFICO ==========
+  
+  // Filtrar categorias baseado no tipo selecionado
+  const categorias = Array.from(new Set(
+    transactions
+      .filter(t => chartType === 'ambos' || t.type === chartType)
+      .map(t => t.category)
+      .filter(Boolean)
+  )).sort();
 
   const getDateRange = () => {
     if (chartPeriod === 'custom' && customStartDate && customEndDate) {
@@ -290,21 +297,45 @@ const FinancialDashboard = () => {
 
   const filteredForChart = transactions.filter((t) => {
     const { start, end } = getDateRange();
-    const d = new Date(t.due_date + 'T00:00:00');
+    const transactionDate = new Date(t.due_date + 'T00:00:00');
     const categoryOk = chartCategory === 'todas' || t.category === chartCategory;
     const typeOk = chartType === 'ambos' || t.type === chartType;
-    return d >= start && d <= end && categoryOk && typeOk;
+    
+    return transactionDate >= start && transactionDate <= end && categoryOk && typeOk;
+  });
+
+  // Debug logging
+  console.log('Chart Debug Info:', {
+    totalTransactions: transactions.length,
+    filteredCount: filteredForChart.length,
+    filters: { chartPeriod, chartCategory, chartType },
+    dateRange: getDateRange(),
+    sampleTransactions: transactions.slice(0, 3).map(t => ({
+      id: t.id,
+      type: t.type,
+      category: t.category,
+      due_date: t.due_date,
+      amount: t.amount
+    }))
   });
 
   const aggregate = new Map<string, { date: string; entrada: number; saida: number }>();
   for (const t of filteredForChart) {
     const key = new Date(t.due_date + 'T00:00:00').toISOString().slice(0, 10);
-    if (!aggregate.has(key)) aggregate.set(key, { date: key, entrada: 0, saida: 0 });
+    if (!aggregate.has(key)) {
+      aggregate.set(key, { date: key, entrada: 0, saida: 0 });
+    }
     const item = aggregate.get(key)!;
-    if (t.type === 'entrada') item.entrada += t.amount;
-    else item.saida += t.amount;
+    if (t.type === 'entrada') {
+      item.entrada += t.amount;
+    } else {
+      item.saida += t.amount;
+    }
   }
+  
   const chartData = Array.from(aggregate.values()).sort((a, b) => a.date.localeCompare(b.date));
+  
+  console.log('Final Chart Data:', chartData);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-financial-primary/5 via-background to-financial-neutral/5">
