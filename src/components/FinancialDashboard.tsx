@@ -158,6 +158,8 @@ const FinancialDashboard = () => {
         });
       } else {
         // Transação única
+        const dueDate = new Date(formData.dueDate + 'T00:00:00');
+        
         const { error } = await supabase
           .from('transactions')
           .insert({
@@ -168,7 +170,7 @@ const FinancialDashboard = () => {
             payment_method: formData.paymentMethod,
             installments: 1,
             current_installment: 1,
-            due_date: formData.dueDate,
+            due_date: dueDate.toISOString().split('T')[0], // Format as YYYY-MM-DD
             category: formData.category,
             status: 'pendente'
           });
@@ -296,7 +298,7 @@ const FinancialDashboard = () => {
 
   const aggregate = new Map<string, { date: string; entrada: number; saida: number }>();
   for (const t of filteredForChart) {
-    const key = new Date(t.due_date).toISOString().slice(0, 10);
+    const key = new Date(t.due_date + 'T00:00:00').toISOString().slice(0, 10);
     if (!aggregate.has(key)) aggregate.set(key, { date: key, entrada: 0, saida: 0 });
     const item = aggregate.get(key)!;
     if (t.type === 'entrada') item.entrada += t.amount;
