@@ -15,7 +15,7 @@ import { toast } from '@/hooks/use-toast';
 import { formatCurrencyInput, parseCurrencyInput, formatCurrency } from '@/utils/currencyFormatter';
 import { PatternsManager } from '@/components/PatternsManager';
 import { PatternInput } from '@/components/PatternInput';
-import ChartAnalytics from '@/components/ChartAnalytics';
+
 
 type TransactionType = 'entrada' | 'saida';
 type PaymentMethod = 'a_vista' | 'parcelado';
@@ -330,7 +330,7 @@ const FinancialDashboard = () => {
 
         {/* Tabs */}
         <Tabs defaultValue="cadastro" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 lg:w-[680px]">
+          <TabsList className="grid w-full grid-cols-3 lg:w-[520px]">
             <TabsTrigger value="cadastro" className="space-x-2">
               <PlusCircle className="h-4 w-4" />
               <span>Nova Transação</span>
@@ -338,10 +338,6 @@ const FinancialDashboard = () => {
             <TabsTrigger value="historico" className="space-x-2">
               <FileText className="h-4 w-4" />
               <span>Histórico</span>
-            </TabsTrigger>
-            <TabsTrigger value="analise" className="space-x-2">
-              <TrendingUp className="h-4 w-4" />
-              <span>Gráficos</span>
             </TabsTrigger>
             <TabsTrigger value="padroes" className="space-x-2">
               <Settings className="h-4 w-4" />
@@ -564,9 +560,6 @@ const FinancialDashboard = () => {
             </Card>
           </TabsContent>
 
-          <TabsContent value="analise" className="space-y-6">
-            <ChartAnalytics transactions={transactions} />
-          </TabsContent>
 
           <TabsContent value="padroes" className="space-y-6">
             <Card className="financial-card">
