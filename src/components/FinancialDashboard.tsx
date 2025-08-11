@@ -15,6 +15,7 @@ import { toast } from '@/hooks/use-toast';
 import { formatCurrencyInput, parseCurrencyInput, formatCurrency } from '@/utils/currencyFormatter';
 import { PatternsManager } from '@/components/PatternsManager';
 import { PatternInput } from '@/components/PatternInput';
+import AnalyticsTab from '@/components/AnalyticsTab';
 
 
 type TransactionType = 'entrada' | 'saida';
@@ -254,7 +255,6 @@ const FinancialDashboard = () => {
     });
   };
 
-  
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-financial-primary/5 via-background to-financial-neutral/5">
@@ -330,20 +330,24 @@ const FinancialDashboard = () => {
 
         {/* Tabs */}
         <Tabs defaultValue="cadastro" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 lg:w-[520px]">
-            <TabsTrigger value="cadastro" className="space-x-2">
-              <PlusCircle className="h-4 w-4" />
-              <span>Nova Transação</span>
-            </TabsTrigger>
-            <TabsTrigger value="historico" className="space-x-2">
-              <FileText className="h-4 w-4" />
-              <span>Histórico</span>
-            </TabsTrigger>
-            <TabsTrigger value="padroes" className="space-x-2">
-              <Settings className="h-4 w-4" />
-              <span>Criar Padrões</span>
-            </TabsTrigger>
-          </TabsList>
+            <TabsList className="grid w-full grid-cols-4 lg:w-[700px]">
+              <TabsTrigger value="cadastro" className="space-x-2">
+                <PlusCircle className="h-4 w-4" />
+                <span>Nova Transação</span>
+              </TabsTrigger>
+              <TabsTrigger value="historico" className="space-x-2">
+                <FileText className="h-4 w-4" />
+                <span>Histórico</span>
+              </TabsTrigger>
+              <TabsTrigger value="analises" className="space-x-2">
+                <TrendingUp className="h-4 w-4" />
+                <span>Análises</span>
+              </TabsTrigger>
+              <TabsTrigger value="padroes" className="space-x-2">
+                <Settings className="h-4 w-4" />
+                <span>Criar Padrões</span>
+              </TabsTrigger>
+            </TabsList>
 
           <TabsContent value="cadastro" className="space-y-6">
             <Card className="form-section">
@@ -560,6 +564,10 @@ const FinancialDashboard = () => {
             </Card>
           </TabsContent>
 
+
+          <TabsContent value="analises" className="space-y-6">
+            <AnalyticsTab />
+          </TabsContent>
 
           <TabsContent value="padroes" className="space-y-6">
             <Card className="financial-card">
