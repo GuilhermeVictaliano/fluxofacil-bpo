@@ -254,7 +254,7 @@ const FinancialDashboard = () => {
     });
   };
 
-  // Seção de gráficos foi refatorada para um componente dedicado (ChartAnalytics)
+  
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-financial-primary/5 via-background to-financial-neutral/5">
