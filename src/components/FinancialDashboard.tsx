@@ -9,12 +9,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { PlusCircle, TrendingUp, TrendingDown, DollarSign, Calendar, FileText, Trash, ArrowUpDown, Settings } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from 'recharts';
+
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { formatCurrencyInput, parseCurrencyInput, formatCurrency } from '@/utils/currencyFormatter';
 import { PatternsManager } from '@/components/PatternsManager';
 import { PatternInput } from '@/components/PatternInput';
+import ChartAnalytics from '@/components/ChartAnalytics';
 
 type TransactionType = 'entrada' | 'saida';
 type PaymentMethod = 'a_vista' | 'parcelado';
@@ -50,11 +51,6 @@ const FinancialDashboard = () => {
     category: ''
   });
 
-  const [chartPeriod, setChartPeriod] = useState<'30' | '90' | '365' | 'all' | 'custom'>('90');
-  const [chartCategory, setChartCategory] = useState<string>('todas');
-  const [chartType, setChartType] = useState<'ambos' | 'entrada' | 'saida'>('ambos');
-  const [customStartDate, setCustomStartDate] = useState('');
-  const [customEndDate, setCustomEndDate] = useState('');
   const [sortBy, setSortBy] = useState<'creation_date' | 'due_date'>('creation_date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
@@ -258,84 +254,7 @@ const FinancialDashboard = () => {
     });
   };
 
-  // ========== FILTROS E DADOS DO GRÁFICO ==========
-  
-  // Filtrar categorias baseado no tipo selecionado
-  const categorias = Array.from(new Set(
-    transactions
-      .filter(t => chartType === 'ambos' || t.type === chartType)
-      .map(t => t.category)
-      .filter(Boolean)
-  )).sort();
-
-  const getDateRange = () => {
-    if (chartPeriod === 'custom' && customStartDate && customEndDate) {
-      return {
-        start: new Date(customStartDate + 'T00:00:00'),
-        end: new Date(customEndDate + 'T23:59:59')
-      };
-    }
-    
-    const now = new Date();
-    if (chartPeriod === '30') {
-      const start = new Date(now);
-      start.setDate(start.getDate() - 30);
-      return { start, end: now };
-    }
-    if (chartPeriod === '90') {
-      const start = new Date(now);
-      start.setDate(start.getDate() - 90);
-      return { start, end: now };
-    }
-    if (chartPeriod === '365') {
-      const start = new Date(now);
-      start.setDate(start.getDate() - 365);
-      return { start, end: now };
-    }
-    return { start: new Date(0), end: now };
-  };
-
-  const filteredForChart = transactions.filter((t) => {
-    const { start, end } = getDateRange();
-    const transactionDate = new Date(t.due_date + 'T00:00:00');
-    const categoryOk = chartCategory === 'todas' || t.category === chartCategory;
-    const typeOk = chartType === 'ambos' || t.type === chartType;
-    
-    return transactionDate >= start && transactionDate <= end && categoryOk && typeOk;
-  });
-
-  // Debug logging
-  console.log('Chart Debug Info:', {
-    totalTransactions: transactions.length,
-    filteredCount: filteredForChart.length,
-    filters: { chartPeriod, chartCategory, chartType },
-    dateRange: getDateRange(),
-    sampleTransactions: transactions.slice(0, 3).map(t => ({
-      id: t.id,
-      type: t.type,
-      category: t.category,
-      due_date: t.due_date,
-      amount: t.amount
-    }))
-  });
-
-  const aggregate = new Map<string, { date: string; entrada: number; saida: number }>();
-  for (const t of filteredForChart) {
-    const key = new Date(t.due_date + 'T00:00:00').toISOString().slice(0, 10);
-    if (!aggregate.has(key)) {
-      aggregate.set(key, { date: key, entrada: 0, saida: 0 });
-    }
-    const item = aggregate.get(key)!;
-    if (t.type === 'entrada') {
-      item.entrada += t.amount;
-    } else {
-      item.saida += t.amount;
-    }
-  }
-  
-  const chartData = Array.from(aggregate.values()).sort((a, b) => a.date.localeCompare(b.date));
-  
-  console.log('Final Chart Data:', chartData);
+  // Seção de gráficos foi refatorada para um componente dedicado (ChartAnalytics)
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-financial-primary/5 via-background to-financial-neutral/5">
@@ -646,113 +565,7 @@ const FinancialDashboard = () => {
           </TabsContent>
 
           <TabsContent value="analise" className="space-y-6">
-            <Card className="financial-card">
-              <CardHeader>
-                <CardTitle>Gráfico de Entradas x Saídas</CardTitle>
-                <CardDescription>Visualize o fluxo financeiro ao longo do tempo</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                 {/* Filtros */}
-                 <div className="space-y-4">
-                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                     <div className="space-y-2">
-                       <Label>Período</Label>
-                       <Select value={chartPeriod} onValueChange={(v) => setChartPeriod(v as any)}>
-                         <SelectTrigger>
-                           <SelectValue placeholder="Selecione" />
-                         </SelectTrigger>
-                         <SelectContent>
-                           <SelectItem value="30">Últimos 30 dias</SelectItem>
-                           <SelectItem value="90">Últimos 90 dias</SelectItem>
-                           <SelectItem value="365">Últimos 12 meses</SelectItem>
-                           <SelectItem value="all">Tudo</SelectItem>
-                           <SelectItem value="custom">Período Personalizado</SelectItem>
-                         </SelectContent>
-                       </Select>
-                     </div>
-
-                     <div className="space-y-2">
-                       <Label>Categoria</Label>
-                       <Select value={chartCategory} onValueChange={(v) => setChartCategory(v)}>
-                         <SelectTrigger>
-                           <SelectValue placeholder="Todas" />
-                         </SelectTrigger>
-                         <SelectContent>
-                           <SelectItem value="todas">Todas</SelectItem>
-                           {categorias.map((c) => (
-                             <SelectItem key={c} value={c}>{c}</SelectItem>
-                           ))}
-                         </SelectContent>
-                       </Select>
-                     </div>
-
-                     <div className="space-y-2">
-                       <Label>Tipo</Label>
-                       <Select value={chartType} onValueChange={(v) => setChartType(v as any)}>
-                         <SelectTrigger>
-                           <SelectValue placeholder="Ambos" />
-                         </SelectTrigger>
-                         <SelectContent>
-                           <SelectItem value="ambos">Ambos</SelectItem>
-                           <SelectItem value="entrada">Entradas</SelectItem>
-                           <SelectItem value="saida">Saídas</SelectItem>
-                         </SelectContent>
-                       </Select>
-                     </div>
-                   </div>
-
-                   {/* Campos de data customizada */}
-                   {chartPeriod === 'custom' && (
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
-                       <div className="space-y-2">
-                         <Label>Data Inicial</Label>
-                         <Input
-                           type="date"
-                           value={customStartDate}
-                           onChange={(e) => setCustomStartDate(e.target.value)}
-                           placeholder="dd/mm/aaaa"
-                         />
-                       </div>
-                       <div className="space-y-2">
-                         <Label>Data Final</Label>
-                         <Input
-                           type="date"
-                           value={customEndDate}
-                           onChange={(e) => setCustomEndDate(e.target.value)}
-                           placeholder="dd/mm/aaaa"
-                         />
-                       </div>
-                     </div>
-                   )}
-                 </div>
-
-                {/* Gráfico */}
-                {chartData.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>Sem dados para o período/filters selecionados.</p>
-                  </div>
-                ) : (
-                  <div className="w-full h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={chartData} margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="date" tickFormatter={(v) => new Date(v).toLocaleDateString('pt-BR')} />
-                        <YAxis />
-                        <Tooltip formatter={(v: any) => formatCurrency(Number(v))} labelFormatter={(l) => new Date(l).toLocaleDateString('pt-BR')} />
-                        <Legend />
-                        {(chartType === 'ambos' || chartType === 'entrada') && (
-                          <Line type="monotone" dataKey="entrada" name="Entradas" stroke={`hsl(var(--financial-income))`} strokeWidth={2} dot={false} />
-                        )}
-                        {(chartType === 'ambos' || chartType === 'saida') && (
-                          <Line type="monotone" dataKey="saida" name="Saídas" stroke={`hsl(var(--financial-expense))`} strokeWidth={2} dot={false} />
-                        )}
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <ChartAnalytics transactions={transactions} />
           </TabsContent>
 
           <TabsContent value="padroes" className="space-y-6">
