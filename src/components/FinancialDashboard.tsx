@@ -531,7 +531,7 @@ const FinancialDashboard = () => {
                             </div>
                             <h3 className="font-medium">{transaction.description}</h3>
                              <p className="text-sm text-muted-foreground">
-                               {transaction.category} • Venc: {new Date(transaction.due_date).toLocaleDateString('pt-BR')}
+                               {transaction.category} • Venc: {new Date(transaction.due_date).toLocaleDateString('pt-BR')} • Criação: {(transaction.creation_date || transaction.created_at) ? new Date(transaction.creation_date || transaction.created_at).toLocaleDateString('pt-BR') : '-'}
                              </p>
                           </div>
                           <div className="text-right flex flex-col items-end gap-2">

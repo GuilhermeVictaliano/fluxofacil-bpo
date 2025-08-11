@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -59,6 +59,7 @@ export default function AnalyticsTab() {
   const [data, setData] = useState<Array<{ date: string; label: string; entrada: number; saida: number }>>([]);
   const [totals, setTotals] = useState<{ entrada: number; saida: number }>({ entrada: 0, saida: 0 });
   const [loading, setLoading] = useState(false);
+  const autoRangeAppliedRef = useRef(false);
 
   // Load patterns for current user (used as options)
   useEffect(() => {
@@ -80,6 +81,42 @@ export default function AnalyticsTab() {
     setEndDate(formatDate(new Date()));
     setStartDate(formatDate(addDays(new Date(), -(days - 1))));
   };
+
+  // Auto-apply full range (earliest to latest due_date) on first load when filters are at defaults
+  useEffect(() => {
+    if (!user || autoRangeAppliedRef.current) return;
+    if (!(typeFilter === 'todos' && categoryFilter === 'todos' && descriptionFilter === 'todos')) return;
+    const applyRange = async () => {
+      try {
+        const [minRes, maxRes] = await Promise.all([
+          supabase
+            .from('transactions')
+            .select('due_date')
+            .eq('user_id', user.id)
+            .order('due_date', { ascending: true })
+            .limit(1),
+          supabase
+            .from('transactions')
+            .select('due_date')
+            .eq('user_id', user.id)
+            .order('due_date', { ascending: false })
+            .limit(1),
+        ]);
+        const minDate = (minRes.data && (minRes.data as any[])[0]?.due_date) as string | null;
+        const maxDate = (maxRes.data && (maxRes.data as any[])[0]?.due_date) as string | null;
+        if (minDate && maxDate) {
+          setStartDate(minDate);
+          setEndDate(maxDate);
+          setPreset('custom');
+        }
+      } catch (e) {
+        console.error('Erro ao definir intervalo inicial:', e);
+      } finally {
+        autoRangeAppliedRef.current = true;
+      }
+    };
+    applyRange();
+  }, [user, typeFilter, categoryFilter, descriptionFilter]);
 
   // Fetch and aggregate transactions whenever filters change
   useEffect(() => {
@@ -205,7 +242,7 @@ export default function AnalyticsTab() {
                 value={categoryFilter}
                 onValueChange={(v: string) => setCategoryFilter(v as any)}
               >
-                <SelectTrigger>
+                <SelectTrigger disabled={typeFilter === "todos"}>
                   <SelectValue placeholder="Todos" />
                 </SelectTrigger>
                 <SelectContent>
@@ -223,7 +260,7 @@ export default function AnalyticsTab() {
                 value={descriptionFilter}
                 onValueChange={(v: string) => setDescriptionFilter(v as any)}
               >
-                <SelectTrigger>
+                <SelectTrigger disabled={typeFilter === "todos"}>
                   <SelectValue placeholder="Todos" />
                 </SelectTrigger>
                 <SelectContent>
