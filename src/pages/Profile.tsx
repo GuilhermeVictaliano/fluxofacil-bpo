@@ -174,14 +174,13 @@ const Profile = () => {
           return;
         }
 
-        // Use the new verify function
-        const { data: isValid, error } = await supabase.rpc('verify_user_password', {
-          user_id_input: user.id,
-          password_input: currentPassword,
-          cnpj_input: profileData.cnpj
+        // Use authenticate_user (same as login) to verify password
+        const { data: authData, error } = await supabase.rpc('authenticate_user', {
+          cnpj_input: profileData.cnpj,
+          password_input: currentPassword
         });
 
-        if (error || !isValid) {
+        if (error || !authData || authData.length === 0) {
           toast({
             title: "Erro",
             description: "Senha incorreta.",
