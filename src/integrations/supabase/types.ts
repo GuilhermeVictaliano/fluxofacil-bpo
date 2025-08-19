@@ -159,6 +159,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      verify_user_password: {
+        Args: {
+          cnpj_input: string
+          password_input: string
+          user_id_input: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never

@@ -165,23 +165,23 @@ const Profile = () => {
 
   const handleShowPassword = async () => {
     if (!showPassword && !actualPassword && profileData) {
-      // Need to fetch the actual password
+      // Need to verify password to show it
       setLoadingPassword(true);
       try {
-        // We need to ask the user for their current password to show it
         const currentPassword = prompt('Digite sua senha atual para visualizá-la:');
         if (!currentPassword) {
           setLoadingPassword(false);
           return;
         }
 
-        // Verify the password first
-        const { data: authData, error: authError } = await supabase.rpc('authenticate_user', {
-          cnpj_input: profileData.cnpj,
-          password_input: currentPassword
+        // Use the new verify function
+        const { data: isValid, error } = await supabase.rpc('verify_user_password', {
+          user_id_input: user.id,
+          password_input: currentPassword,
+          cnpj_input: profileData.cnpj
         });
 
-        if (authError || !authData || authData.length === 0) {
+        if (error || !isValid) {
           toast({
             title: "Erro",
             description: "Senha incorreta.",
@@ -191,7 +191,6 @@ const Profile = () => {
           return;
         }
 
-        // If authentication is successful, store the password to show
         setActualPassword(currentPassword);
         setShowPassword(true);
       } catch (error) {
