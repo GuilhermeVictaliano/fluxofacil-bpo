@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "13.0.4"
@@ -133,9 +133,9 @@ export type Database = {
       authenticate_user: {
         Args: { cnpj_input: string; password_input: string }
         Returns: {
-          profile_id: string
           profile_cnpj: string
           profile_company_name: string
+          profile_id: string
         }[]
       }
       migrate_legacy_to_auth: {
@@ -149,6 +149,15 @@ export type Database = {
           password_input: string
         }
         Returns: string
+      }
+      update_user_password: {
+        Args: {
+          cnpj_input: string
+          current_password_input: string
+          new_password_input: string
+          user_id_input: string
+        }
+        Returns: boolean
       }
     }
     Enums: {

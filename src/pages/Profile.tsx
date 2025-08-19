@@ -132,18 +132,24 @@ const Profile = () => {
         return;
       }
 
-      // Update password using register_user logic (bcrypt hash)
-      const { error: updateError } = await supabase.rpc('sql', {
-        query: `
-          UPDATE profiles 
-          SET password_hash = crypt($1 || $2 || 'bpo_salt', gen_salt('bf', 10)), 
-              updated_at = now() 
-          WHERE user_id = $3
-        `,
-        args: [passwordForm.newPassword, profileData.cnpj, user.id]
+      // Update password using the new update_user_password function
+      const { data: updateResult, error: updateError } = await supabase.rpc('update_user_password', {
+        user_id_input: user.id,
+        current_password_input: passwordForm.currentPassword,
+        new_password_input: passwordForm.newPassword,
+        cnpj_input: profileData.cnpj
       });
 
       if (updateError) throw updateError;
+
+      if (!updateResult) {
+        toast({
+          title: "Erro",
+          description: "Senha atual incorreta.",
+          variant: "destructive",
+        });
+        return;
+      }
 
       toast({
         title: "Sucesso",
