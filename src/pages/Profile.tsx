@@ -27,6 +27,8 @@ const Profile = () => {
   const [transactionCount, setTransactionCount] = useState(0);
   const [lastTransactionDate, setLastTransactionDate] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [actualPassword, setActualPassword] = useState<string | null>(null);
+  const [loadingPassword, setLoadingPassword] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: '',
@@ -158,6 +160,8 @@ const Profile = () => {
 
       setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
       setIsChangingPassword(false);
+      // Clear the cached password so it needs to be fetched again
+      setActualPassword(null);
 
     } catch (error) {
       console.error('Erro ao alterar senha:', error);
@@ -168,6 +172,51 @@ const Profile = () => {
       });
     } finally {
       setPasswordLoading(false);
+    }
+  };
+
+  const handleShowPassword = async () => {
+    if (!showPassword && !actualPassword && profileData) {
+      // Need to fetch the actual password
+      setLoadingPassword(true);
+      try {
+        // We need to ask the user for their current password to show it
+        const currentPassword = prompt('Digite sua senha atual para visualizá-la:');
+        if (!currentPassword) {
+          setLoadingPassword(false);
+          return;
+        }
+
+        // Verify the password first
+        const { data: authData, error: authError } = await supabase.rpc('authenticate_user', {
+          cnpj_input: profileData.cnpj,
+          password_input: currentPassword
+        });
+
+        if (authError || !authData || authData.length === 0) {
+          toast({
+            title: "Erro",
+            description: "Senha incorreta.",
+            variant: "destructive",
+          });
+          setLoadingPassword(false);
+          return;
+        }
+
+        // If authentication is successful, store the password to show
+        setActualPassword(currentPassword);
+        setShowPassword(true);
+      } catch (error) {
+        toast({
+          title: "Erro",
+          description: "Não foi possível verificar a senha.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoadingPassword(false);
+      }
+    } else {
+      setShowPassword(!showPassword);
     }
   };
 
@@ -277,7 +326,7 @@ const Profile = () => {
                     <div className="flex-1 relative">
                       <Input
                         type={showPassword ? "text" : "password"}
-                        value="**********"
+                        value={showPassword && actualPassword ? actualPassword : "**********"}
                         disabled
                       />
                       <Button
@@ -285,9 +334,16 @@ const Profile = () => {
                         variant="ghost"
                         size="icon"
                         className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
-                        onClick={() => setShowPassword(!showPassword)}
+                        onClick={handleShowPassword}
+                        disabled={loadingPassword}
                       >
-                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        {loadingPassword ? (
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                        ) : showPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
                       </Button>
                     </div>
                   </div>
