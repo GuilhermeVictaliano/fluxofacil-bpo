@@ -180,7 +180,18 @@ const Profile = () => {
           password_input: currentPassword
         });
 
-        if (error || !authData || authData.length === 0) {
+        if (error) {
+          console.error('Erro ao verificar senha:', error);
+          toast({
+            title: "Erro",
+            description: "Falha técnica ao verificar a senha. Tente novamente.",
+            variant: "destructive",
+          });
+          setLoadingPassword(false);
+          return;
+        }
+
+        if (!authData || authData.length === 0) {
           toast({
             title: "Erro",
             description: "Senha incorreta.",
