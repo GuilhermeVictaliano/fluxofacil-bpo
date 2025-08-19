@@ -7,7 +7,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { PlusCircle, TrendingUp, TrendingDown, DollarSign, Calendar, FileText, Trash, ArrowUpDown, Settings } from 'lucide-react';
+import { PlusCircle, TrendingUp, TrendingDown, DollarSign, Calendar, FileText, Trash, ArrowUpDown, Settings, User } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 
 import { useAuth } from '@/contexts/AuthContext';
@@ -40,6 +41,7 @@ interface Transaction {
 
 const FinancialDashboard = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -260,13 +262,26 @@ const FinancialDashboard = () => {
     <div className="min-h-screen bg-gradient-to-br from-financial-primary/5 via-background to-financial-neutral/5">
       <div className="container mx-auto p-6 space-y-8">
         {/* Header */}
-        <div className="text-center space-y-4 animate-fade-in">
-          <h1 className="text-4xl font-bold bg-financial-gradient bg-clip-text text-transparent">
-            BPO Financeiro
-          </h1>
-          <p className="text-muted-foreground text-lg">
-            Sistema de Gestão Financeira para Empresas
-          </p>
+        <div className="relative">
+          <div className="text-center space-y-4 animate-fade-in">
+            <h1 className="text-4xl font-bold bg-financial-gradient bg-clip-text text-transparent">
+              BPO Financeiro
+            </h1>
+            <p className="text-muted-foreground text-lg">
+              Sistema de Gestão Financeira para Empresas
+            </p>
+          </div>
+          
+          {/* Profile Button */}
+          <Button
+            onClick={() => navigate('/profile')}
+            variant="outline"
+            size="icon"
+            className="absolute top-0 right-0 bg-background/80 backdrop-blur-sm hover:bg-primary/10"
+            title="Perfil"
+          >
+            <User className="h-4 w-4" />
+          </Button>
         </div>
 
         {/* Resumo Financeiro */}
