@@ -119,20 +119,8 @@ const Profile = () => {
     try {
       setPasswordLoading(true);
 
-      // Verify current password using authenticate_user function
-      const { data: authData, error: authError } = await supabase.rpc('authenticate_user', {
-        cnpj_input: profileData.cnpj,
-        password_input: passwordForm.currentPassword
-      });
-
-      if (authError || !authData || authData.length === 0) {
-        toast({
-          title: "Erro",
-          description: "Senha atual incorreta.",
-          variant: "destructive",
-        });
-        return;
-      }
+      // Update password directly; function will validate current password internally
+      
 
       // Update password using the new update_user_password function
       const { data: updateResult, error: updateError } = await supabase.rpc('update_user_password', {
