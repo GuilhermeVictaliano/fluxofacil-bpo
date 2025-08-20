@@ -39,9 +39,10 @@ export const PasswordSection = ({ userCnpj, userId }: PasswordSectionProps) => {
 
   const handleConfirmPassword = async (password: string) => {
     try {
-      const { data: authData, error } = await supabase.rpc('authenticate_user', {
+      const { data: isValid, error } = await supabase.rpc('verify_user_password', {
+        user_id_input: userId,
+        password_input: password,
         cnpj_input: userCnpj,
-        password_input: password
       });
 
       if (error) {
@@ -54,7 +55,7 @@ export const PasswordSection = ({ userCnpj, userId }: PasswordSectionProps) => {
         return;
       }
 
-      if (!authData || authData.length === 0) {
+      if (!isValid) {
         toast({
           title: "Senha Incorreta",
           description: "A senha digitada está incorreta.",
