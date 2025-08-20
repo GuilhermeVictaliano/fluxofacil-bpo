@@ -61,7 +61,7 @@ const Auth = () => {
     if (!validateCNPJ(loginForm.cnpj)) {
       toast({
         title: "Erro",
-        description: "CNPJ deve ter 11 ou 14 dígitos",
+        description: "CPF/CNPJ deve ter 11 ou 14 dígitos",
         variant: "destructive",
       });
       return;
@@ -106,7 +106,7 @@ const Auth = () => {
     if (!validateCNPJ(signupForm.cnpj)) {
       toast({
         title: "Erro",
-        description: "CNPJ deve ter 11 ou 14 dígitos",
+        description: "CPF/CNPJ deve ter 11 ou 14 dígitos",
         variant: "destructive",
       });
       return;
@@ -199,12 +199,12 @@ const Auth = () => {
             <TabsContent value="login">
               <form onSubmit={handleLogin} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="login-cnpj">CNPJ</Label>
+                  <Label htmlFor="login-cnpj">CPF/CNPJ</Label>
                   <div className="relative">
                     <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input
                       id="login-cnpj"
-                      placeholder="00.000.000/0001-00"
+                      placeholder="000.000.000-00 ou 00.000.000/0001-00"
                       value={loginForm.cnpj}
                       onChange={(e) => setLoginForm({
                         ...loginForm, 
@@ -263,12 +263,12 @@ const Auth = () => {
             <TabsContent value="signup">
               <form onSubmit={handleSignup} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="signup-cnpj">CNPJ</Label>
+                  <Label htmlFor="signup-cnpj">CPF/CNPJ</Label>
                   <div className="relative">
                     <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input
                       id="signup-cnpj"
-                      placeholder="00.000.000/0001-00"
+                      placeholder="000.000.000-00 ou 00.000.000/0001-00"
                       value={signupForm.cnpj}
                       onChange={(e) => setSignupForm({
                         ...signupForm, 
