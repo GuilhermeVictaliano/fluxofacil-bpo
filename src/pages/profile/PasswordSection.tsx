@@ -40,6 +40,7 @@ export const PasswordSection = ({ userCnpj, userId }: PasswordSectionProps) => {
   const handleConfirmPassword = async (password: string) => {
     try {
       const cnpjDigits = (userCnpj || '').replace(/\D/g, '');
+      console.log('[PasswordSection] verify start', { userId, cnpjDigits, rawCnpj: userCnpj, passwordLen: password?.length });
 
       // Primary: boolean RPC that handles bcrypt + legacy MD5 with proper salt
       const { data: isValid, error } = await supabase.rpc('verify_user_password', {
@@ -47,6 +48,7 @@ export const PasswordSection = ({ userCnpj, userId }: PasswordSectionProps) => {
         password_input: password,
         cnpj_input: cnpjDigits,
       });
+      console.log('[PasswordSection] verify_user_password result', { isValid, error });
 
       let valid = Boolean(isValid);
       let rpcError = error as any;
@@ -57,6 +59,7 @@ export const PasswordSection = ({ userCnpj, userId }: PasswordSectionProps) => {
           cnpj_input: cnpjDigits,
           password_input: password,
         });
+        console.log('[PasswordSection] authenticate_user fallback result', { count: Array.isArray(authData) ? authData.length : null, fallbackErr });
         rpcError = fallbackErr;
         valid = Array.isArray(authData) && authData.length > 0;
       }
@@ -122,12 +125,14 @@ export const PasswordSection = ({ userCnpj, userId }: PasswordSectionProps) => {
 
       const cnpjDigits = (userCnpj || '').replace(/\D/g, '');
 
+      console.log('[PasswordSection] update start', { userId, cnpjDigits, hasCurrent: !!passwordForm.currentPassword, newLen: passwordForm.newPassword.length });
       const { data: updateResult, error } = await supabase.rpc('update_user_password', {
         user_id_input: userId,
         current_password_input: passwordForm.currentPassword,
         new_password_input: passwordForm.newPassword,
         cnpj_input: cnpjDigits
       });
+      console.log('[PasswordSection] update result', { updateResult, error });
 
       if (error) {
         console.error('Password update error:', error);
