@@ -29,12 +29,16 @@ export const PasswordSection = ({ userCnpj, userId }: PasswordSectionProps) => {
   const handleShowPassword = () => {
     if (!showPassword && !actualPassword) {
       setShowConfirmDialog(true);
-    } else {
-      setShowPassword(!showPassword);
-      if (!showPassword) {
+      return;
+    }
+    setShowPassword((prev) => {
+      const next = !prev;
+      // Clear the actual password only when hiding it
+      if (!next) {
         setActualPassword(null);
       }
-    }
+      return next;
+    });
   };
 
   const handleConfirmPassword = async (password: string) => {
@@ -71,7 +75,7 @@ export const PasswordSection = ({ userCnpj, userId }: PasswordSectionProps) => {
           description: 'Erro ao verificar senha. Tente novamente.',
           variant: 'destructive',
         });
-        return;
+        throw rpcError; // keep dialog open for retry
       }
 
       if (!valid) {
@@ -80,7 +84,7 @@ export const PasswordSection = ({ userCnpj, userId }: PasswordSectionProps) => {
           description: 'A senha digitada está incorreta.',
           variant: 'destructive',
         });
-        return;
+        throw new Error('invalid_password'); // keep dialog open for retry
       }
 
       setActualPassword(password);
