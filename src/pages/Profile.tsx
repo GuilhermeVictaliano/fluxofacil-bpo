@@ -7,38 +7,26 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Eye, EyeOff, ArrowLeft, User, Calendar, Database, Clock } from 'lucide-react';
+import { ArrowLeft, User, Calendar, Database, Clock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { PasswordSection } from './profile/PasswordSection';
 
 interface ProfileData {
   cnpj: string;
   company_name: string;
   created_at: string;
-  password_hash: string;
 }
 
 const Profile = () => {
   const { user, loading } = useAuthGuard();
-  const { signOut } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [transactionCount, setTransactionCount] = useState(0);
   const [lastTransactionDate, setLastTransactionDate] = useState<string | null>(null);
-  const [showPassword, setShowPassword] = useState(false);
-  const [actualPassword, setActualPassword] = useState<string | null>(null);
-  const [loadingPassword, setLoadingPassword] = useState(false);
-  const [isChangingPassword, setIsChangingPassword] = useState(false);
-  const [passwordForm, setPasswordForm] = useState({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: ''
-  });
-  const [passwordLoading, setPasswordLoading] = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
 
-  // Load profile data
   useEffect(() => {
     if (!user) return;
     
@@ -49,7 +37,7 @@ const Profile = () => {
         // Get profile data
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
-          .select('cnpj, company_name, created_at, password_hash')
+          .select('cnpj, company_name, created_at')
           .eq('user_id', user.id)
           .single();
 
@@ -79,7 +67,7 @@ const Profile = () => {
         }
 
       } catch (error) {
-        console.error('Erro ao carregar dados do perfil:', error);
+        console.error('Profile data load error:', error);
         toast({
           title: "Erro",
           description: "Não foi possível carregar os dados do perfil.",
@@ -92,130 +80,6 @@ const Profile = () => {
 
     loadProfileData();
   }, [user, toast]);
-
-  const handlePasswordChange = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!user || !profileData) return;
-
-    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      toast({
-        title: "Erro",
-        description: "As senhas não coincidem.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (passwordForm.newPassword.length < 6) {
-      toast({
-        title: "Erro", 
-        description: "A nova senha deve ter pelo menos 6 caracteres.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      setPasswordLoading(true);
-
-      // Update password directly; function will validate current password internally
-      
-
-      // Update password using the new update_user_password function
-      const { data: updateResult, error: updateError } = await supabase.rpc('update_user_password', {
-        user_id_input: user.id,
-        current_password_input: passwordForm.currentPassword,
-        new_password_input: passwordForm.newPassword,
-        cnpj_input: profileData.cnpj
-      });
-
-      if (updateError) throw updateError;
-
-      if (!updateResult) {
-        toast({
-          title: "Erro",
-          description: "Senha atual incorreta.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      toast({
-        title: "Sucesso",
-        description: "Senha alterada com sucesso!",
-      });
-
-      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
-      setIsChangingPassword(false);
-      // Clear the cached password so it needs to be fetched again
-      setActualPassword(null);
-
-    } catch (error) {
-      console.error('Erro ao alterar senha:', error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível alterar a senha. Tente novamente.",
-        variant: "destructive",
-      });
-    } finally {
-      setPasswordLoading(false);
-    }
-  };
-
-  const handleShowPassword = async () => {
-    if (!showPassword && !actualPassword && profileData) {
-      // Need to verify password to show it
-      setLoadingPassword(true);
-      try {
-        const currentPassword = prompt('Digite sua senha atual para visualizá-la:');
-        if (!currentPassword) {
-          setLoadingPassword(false);
-          return;
-        }
-
-        // Use authenticate_user (same as login) to verify password
-        const { data: authData, error } = await supabase.rpc('authenticate_user', {
-          cnpj_input: profileData.cnpj,
-          password_input: currentPassword
-        });
-
-        if (error) {
-          console.error('Erro ao verificar senha:', error);
-          toast({
-            title: "Erro",
-            description: "Falha técnica ao verificar a senha. Tente novamente.",
-            variant: "destructive",
-          });
-          setLoadingPassword(false);
-          return;
-        }
-
-        if (!authData || authData.length === 0) {
-          toast({
-            title: "Erro",
-            description: "Senha incorreta.",
-            variant: "destructive",
-          });
-          setLoadingPassword(false);
-          return;
-        }
-
-        setActualPassword(currentPassword);
-        setShowPassword(true);
-      } catch (error) {
-        toast({
-          title: "Erro",
-          description: "Não foi possível verificar a senha.",
-          variant: "destructive",
-        });
-      } finally {
-        setLoadingPassword(false);
-      }
-    } else {
-      setShowPassword(!showPassword);
-    }
-  };
 
   if (loading || dataLoading) {
     return (
@@ -244,7 +108,7 @@ const Profile = () => {
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <div>
-              <h1 className="text-3xl font-bold">Perfil</h1>
+              <h1 className="text-3xl font-bold">Meu Perfil</h1>
               <p className="text-muted-foreground">Gerencie suas informações e configurações</p>
             </div>
           </div>
@@ -265,7 +129,7 @@ const Profile = () => {
                 <div className="space-y-2">
                   <Label className="flex items-center gap-2">
                     <User className="h-4 w-4" />
-                    Empresa
+                    Nome da Empresa
                   </Label>
                   <Input value={profileData.company_name} disabled />
                 </div>
@@ -309,108 +173,10 @@ const Profile = () => {
           </Card>
 
           {/* Password Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Senha</CardTitle>
-              <CardDescription>
-                Visualize ou altere sua senha de acesso
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {!isChangingPassword ? (
-                <>
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 relative">
-                      <Input
-                        type={showPassword ? "text" : "password"}
-                        value={showPassword && actualPassword ? actualPassword : "**********"}
-                        disabled
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
-                        onClick={handleShowPassword}
-                        disabled={loadingPassword}
-                      >
-                        {loadingPassword ? (
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-                        ) : showPassword ? (
-                          <EyeOff className="h-4 w-4" />
-                        ) : (
-                          <Eye className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                  
-                  <Button 
-                    onClick={() => setIsChangingPassword(true)}
-                    variant="outline"
-                  >
-                    Alterar Senha
-                  </Button>
-                </>
-              ) : (
-                <form onSubmit={handlePasswordChange} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="current-password">Senha Atual</Label>
-                    <Input
-                      id="current-password"
-                      type="password"
-                      value={passwordForm.currentPassword}
-                      onChange={(e) => setPasswordForm(prev => ({ ...prev, currentPassword: e.target.value }))}
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="new-password">Nova Senha</Label>
-                    <Input
-                      id="new-password"
-                      type="password"
-                      value={passwordForm.newPassword}
-                      onChange={(e) => setPasswordForm(prev => ({ ...prev, newPassword: e.target.value }))}
-                      required
-                      minLength={6}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="confirm-password">Confirmar Nova Senha</Label>
-                    <Input
-                      id="confirm-password"
-                      type="password"
-                      value={passwordForm.confirmPassword}
-                      onChange={(e) => setPasswordForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                      required
-                      minLength={6}
-                    />
-                  </div>
-
-                  <div className="flex gap-2">
-                    <Button 
-                      type="submit" 
-                      disabled={passwordLoading}
-                    >
-                      {passwordLoading ? 'Alterando...' : 'Salvar Nova Senha'}
-                    </Button>
-                    <Button 
-                      type="button"
-                      variant="outline"
-                      onClick={() => {
-                        setIsChangingPassword(false);
-                        setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
-                      }}
-                    >
-                      Cancelar
-                    </Button>
-                  </div>
-                </form>
-              )}
-            </CardContent>
-          </Card>
+          <PasswordSection 
+            userCnpj={profileData.cnpj} 
+            userId={user!.id} 
+          />
         </div>
       </div>
     </div>

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -21,18 +20,25 @@ const Auth = () => {
   });
   const [currentTab, setCurrentTab] = useState('login');
   
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, user } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (user) {
+      navigate('/');
+    }
+  }, [user, navigate]);
+
   useEffect(() => {
     const tab = searchParams.get('tab');
-    if (tab) {
+    if (tab && ['login', 'signup', 'reset'].includes(tab)) {
       setCurrentTab(tab);
     }
   }, [searchParams]);
 
-  const formatDocument = (value: string) => {
+  const formatCNPJ = (value: string) => {
     const numbers = value.replace(/\D/g, '');
     
     if (numbers.length <= 11) {
@@ -44,18 +50,27 @@ const Auth = () => {
     }
   };
 
-  const validateDocument = (value: string) => {
+  const validateCNPJ = (value: string) => {
     const numbers = value.replace(/\D/g, '');
-    return numbers.length === 11 || numbers.length === 14; // CPF: 11 digits, CNPJ: 14 digits
+    return numbers.length === 11 || numbers.length === 14;
   };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!validateDocument(loginForm.cnpj)) {
+    if (!validateCNPJ(loginForm.cnpj)) {
       toast({
         title: "Erro",
-        description: "Por favor, insira um CPF ou CNPJ válido",
+        description: "CNPJ deve ter 11 ou 14 dígitos",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (loginForm.password.length < 1) {
+      toast({
+        title: "Erro",
+        description: "Digite sua senha",
         variant: "destructive",
       });
       return;
@@ -63,7 +78,10 @@ const Auth = () => {
 
     setIsLoading(true);
     
-    const { error } = await signIn(loginForm.cnpj.replace(/\D/g, ''), loginForm.password);
+    const { error } = await signIn(
+      loginForm.cnpj.replace(/\D/g, ''), 
+      loginForm.password
+    );
     
     if (error) {
       toast({
@@ -73,8 +91,8 @@ const Auth = () => {
       });
     } else {
       toast({
-        title: "Login realizado com sucesso!",
-        description: "Bem-vindo ao BPO Financeiro",
+        title: "Login realizado!",
+        description: "Bem-vindo ao sistema",
       });
       navigate('/');
     }
@@ -85,19 +103,19 @@ const Auth = () => {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!validateDocument(signupForm.cnpj)) {
+    if (!validateCNPJ(signupForm.cnpj)) {
       toast({
         title: "Erro",
-        description: "Por favor, insira um CPF ou CNPJ válido",
+        description: "CNPJ deve ter 11 ou 14 dígitos",
         variant: "destructive",
       });
       return;
     }
 
-    if (signupForm.password !== signupForm.confirmPassword) {
+    if (!signupForm.companyName.trim()) {
       toast({
         title: "Erro",
-        description: "As senhas não coincidem",
+        description: "Nome da empresa é obrigatório",
         variant: "destructive",
       });
       return;
@@ -106,7 +124,16 @@ const Auth = () => {
     if (signupForm.password.length < 6) {
       toast({
         title: "Erro",
-        description: "A senha deve ter pelo menos 6 caracteres",
+        description: "Senha deve ter pelo menos 6 caracteres",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (signupForm.password !== signupForm.confirmPassword) {
+      toast({
+        title: "Erro",
+        description: "Senhas não coincidem",
         variant: "destructive",
       });
       return;
@@ -116,7 +143,7 @@ const Auth = () => {
     
     const { error } = await signUp(
       signupForm.cnpj.replace(/\D/g, ''),
-      signupForm.companyName,
+      signupForm.companyName.trim(),
       signupForm.password
     );
     
@@ -128,10 +155,14 @@ const Auth = () => {
       });
     } else {
       toast({
-        title: "Cadastro realizado com sucesso!",
-        description: "Agora você pode fazer login com seu CNPJ e senha",
+        title: "Cadastro realizado!",
+        description: "Você já pode fazer login",
       });
       setCurrentTab('login');
+      setLoginForm({
+        cnpj: signupForm.cnpj,
+        password: ''
+      });
     }
     
     setIsLoading(false);
@@ -139,8 +170,8 @@ const Auth = () => {
 
   const handleContactRequest = () => {
     toast({
-      title: "Informações copiadas!",
-      description: "Entre em contato conosco para recuperar sua senha",
+      title: "Contato copiado",
+      description: "Entre em contato para recuperar sua senha",
     });
   };
 
@@ -153,39 +184,39 @@ const Auth = () => {
           </div>
           <CardTitle className="text-2xl">BPO Financeiro</CardTitle>
           <CardDescription>
-            Gerencie suas finanças empresariais
+            Sistema de gestão financeira empresarial
           </CardDescription>
         </CardHeader>
         
         <CardContent>
           <Tabs value={currentTab} onValueChange={setCurrentTab} className="space-y-4">
             <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="login">Login</TabsTrigger>
-              <TabsTrigger value="signup">Cadastro</TabsTrigger>
+              <TabsTrigger value="login">Entrar</TabsTrigger>
+              <TabsTrigger value="signup">Cadastrar</TabsTrigger>
               <TabsTrigger value="reset">Recuperar</TabsTrigger>
             </TabsList>
             
             <TabsContent value="login">
               <form onSubmit={handleLogin} className="space-y-4">
-                 <div className="space-y-2">
-                   <Label htmlFor="login-cnpj">CPF ou CNPJ</Label>
-                   <div className="relative">
-                     <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                     <Input
-                       id="login-cnpj"
-                       placeholder="000.000.000-00 ou 00.000.000/0001-00"
-                       value={loginForm.cnpj}
-                       onChange={(e) => setLoginForm({
-                         ...loginForm, 
-                         cnpj: formatDocument(e.target.value)
-                       })}
-                       className="pl-10"
-                       maxLength={18}
-                       required
-                     />
-                   </div>
-                 </div>
-                
+                <div className="space-y-2">
+                  <Label htmlFor="login-cnpj">CNPJ</Label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="login-cnpj"
+                      placeholder="00.000.000/0001-00"
+                      value={loginForm.cnpj}
+                      onChange={(e) => setLoginForm({
+                        ...loginForm, 
+                        cnpj: formatCNPJ(e.target.value)
+                      })}
+                      className="pl-10"
+                      maxLength={18}
+                      required
+                    />
+                  </div>
+                </div>
+               
                 <div className="space-y-2">
                   <Label htmlFor="login-password">Senha</Label>
                   <div className="relative">
@@ -193,7 +224,7 @@ const Auth = () => {
                     <Input
                       id="login-password"
                       type="password"
-                      placeholder="Sua senha"
+                      placeholder="Digite sua senha"
                       value={loginForm.password}
                       onChange={(e) => setLoginForm({
                         ...loginForm, 
@@ -204,7 +235,7 @@ const Auth = () => {
                     />
                   </div>
                 </div>
-                
+               
                 <Button type="submit" className="w-full" disabled={isLoading}>
                   {isLoading ? (
                     <>
@@ -215,7 +246,7 @@ const Auth = () => {
                     'Entrar'
                   )}
                 </Button>
-                
+               
                 <div className="text-center">
                   <Button 
                     variant="link" 
@@ -231,43 +262,43 @@ const Auth = () => {
             
             <TabsContent value="signup">
               <form onSubmit={handleSignup} className="space-y-4">
-                 <div className="space-y-2">
-                   <Label htmlFor="signup-cnpj">CPF ou CNPJ</Label>
-                   <div className="relative">
-                     <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                     <Input
-                       id="signup-cnpj"
-                       placeholder="000.000.000-00 ou 00.000.000/0001-00"
-                       value={signupForm.cnpj}
-                       onChange={(e) => setSignupForm({
-                         ...signupForm, 
-                         cnpj: formatDocument(e.target.value)
-                       })}
-                       className="pl-10"
-                       maxLength={18}
-                       required
-                     />
-                   </div>
-                 </div>
-                
-                 <div className="space-y-2">
-                   <Label htmlFor="company-name">Nome/Apelido Corporativo</Label>
-                   <div className="relative">
-                     <Building2 className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                     <Input
-                       id="company-name"
-                       placeholder="Nome/Apelido Corporativo"
-                       value={signupForm.companyName}
-                       onChange={(e) => setSignupForm({
-                         ...signupForm, 
-                         companyName: e.target.value
-                       })}
-                       className="pl-10"
-                       required
-                     />
-                   </div>
-                 </div>
-                
+                <div className="space-y-2">
+                  <Label htmlFor="signup-cnpj">CNPJ</Label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="signup-cnpj"
+                      placeholder="00.000.000/0001-00"
+                      value={signupForm.cnpj}
+                      onChange={(e) => setSignupForm({
+                        ...signupForm, 
+                        cnpj: formatCNPJ(e.target.value)
+                      })}
+                      className="pl-10"
+                      maxLength={18}
+                      required
+                    />
+                  </div>
+                </div>
+               
+                <div className="space-y-2">
+                  <Label htmlFor="company-name">Nome da Empresa</Label>
+                  <div className="relative">
+                    <Building2 className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="company-name"
+                      placeholder="Razão social ou nome fantasia"
+                      value={signupForm.companyName}
+                      onChange={(e) => setSignupForm({
+                        ...signupForm, 
+                        companyName: e.target.value
+                      })}
+                      className="pl-10"
+                      required
+                    />
+                  </div>
+                </div>
+               
                 <div className="space-y-2">
                   <Label htmlFor="signup-password">Senha</Label>
                   <div className="relative">
@@ -287,7 +318,7 @@ const Auth = () => {
                     />
                   </div>
                 </div>
-                
+               
                 <div className="space-y-2">
                   <Label htmlFor="confirm-password">Confirmar Senha</Label>
                   <div className="relative">
@@ -295,7 +326,7 @@ const Auth = () => {
                     <Input
                       id="confirm-password"
                       type="password"
-                      placeholder="Confirme sua senha"
+                      placeholder="Digite a senha novamente"
                       value={signupForm.confirmPassword}
                       onChange={(e) => setSignupForm({
                         ...signupForm, 
@@ -306,7 +337,7 @@ const Auth = () => {
                     />
                   </div>
                 </div>
-                
+               
                 <Button type="submit" className="w-full" disabled={isLoading}>
                   {isLoading ? (
                     <>
@@ -324,9 +355,9 @@ const Auth = () => {
               <div className="space-y-6">
                 <div className="text-center">
                   <Lock className="mx-auto h-12 w-12 text-primary mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">Esqueceu sua senha?</h3>
+                  <h3 className="text-lg font-semibold mb-2">Recuperar Senha</h3>
                   <p className="text-sm text-muted-foreground mb-6">
-                    Entre em contato com nossa equipe para recuperar o acesso à sua conta
+                    Entre em contato conosco para resetar sua senha
                   </p>
                 </div>
                 
@@ -354,7 +385,7 @@ const Auth = () => {
                     className="w-full"
                     variant="outline"
                   >
-                    Solicitar Recuperação de Senha
+                    Solicitar Reset de Senha
                   </Button>
                 </div>
                 
