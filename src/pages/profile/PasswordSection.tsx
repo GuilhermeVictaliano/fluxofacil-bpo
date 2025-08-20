@@ -39,27 +39,43 @@ export const PasswordSection = ({ userCnpj, userId }: PasswordSectionProps) => {
 
   const handleConfirmPassword = async (password: string) => {
     try {
+      const cnpjDigits = (userCnpj || '').replace(/\D/g, '');
+
+      // Primary: boolean RPC that handles bcrypt + legacy MD5 with proper salt
       const { data: isValid, error } = await supabase.rpc('verify_user_password', {
         user_id_input: userId,
         password_input: password,
-        cnpj_input: userCnpj,
+        cnpj_input: cnpjDigits,
       });
 
-      if (error) {
-        console.error('Password verification error:', error);
+      let valid = Boolean(isValid);
+      let rpcError = error as any;
+
+      // Fallback: for environments where verify_user_password might be missing/misconfigured
+      if ((!valid && !rpcError) || rpcError) {
+        const { data: authData, error: fallbackErr } = await supabase.rpc('authenticate_user', {
+          cnpj_input: cnpjDigits,
+          password_input: password,
+        });
+        rpcError = fallbackErr;
+        valid = Array.isArray(authData) && authData.length > 0;
+      }
+
+      if (rpcError) {
+        console.error('Password verification error:', rpcError);
         toast({
-          title: "Erro",
-          description: "Erro ao verificar senha. Tente novamente.",
-          variant: "destructive",
+          title: 'Erro',
+          description: 'Erro ao verificar senha. Tente novamente.',
+          variant: 'destructive',
         });
         return;
       }
 
-      if (!isValid) {
+      if (!valid) {
         toast({
-          title: "Senha Incorreta",
-          description: "A senha digitada está incorreta.",
-          variant: "destructive",
+          title: 'Senha Incorreta',
+          description: 'A senha digitada está incorreta.',
+          variant: 'destructive',
         });
         return;
       }
@@ -67,15 +83,15 @@ export const PasswordSection = ({ userCnpj, userId }: PasswordSectionProps) => {
       setActualPassword(password);
       setShowPassword(true);
       toast({
-        title: "Senha Verificada",
-        description: "Senha exibida com segurança.",
+        title: 'Senha Verificada',
+        description: 'Senha exibida com segurança.',
       });
     } catch (error) {
       console.error('Confirm password error:', error);
       toast({
-        title: "Erro",
-        description: "Não foi possível verificar a senha.",
-        variant: "destructive",
+        title: 'Erro',
+        description: 'Não foi possível verificar a senha.',
+        variant: 'destructive',
       });
     }
   };
@@ -104,11 +120,13 @@ export const PasswordSection = ({ userCnpj, userId }: PasswordSectionProps) => {
     try {
       setLoading(true);
 
+      const cnpjDigits = (userCnpj || '').replace(/\D/g, '');
+
       const { data: updateResult, error } = await supabase.rpc('update_user_password', {
         user_id_input: userId,
         current_password_input: passwordForm.currentPassword,
         new_password_input: passwordForm.newPassword,
-        cnpj_input: userCnpj
+        cnpj_input: cnpjDigits
       });
 
       if (error) {
