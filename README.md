@@ -1,73 +1,35 @@
-# Welcome to your Lovable project
+# FluxoFácil BPO
 
-## Project info
+Ideia e protótipo de um painel de BPO financeiro para pequenas empresas: cadastro de receitas e despesas, controle de pagamentos e análises num só lugar.
 
-**URL**: https://lovable.dev/projects/e291bdfb-50fc-4f4c-ac3c-737c12cc0886
+![Status: ideia / protótipo](https://img.shields.io/badge/status-ideia_%2F_prot%C3%B3tipo-lightgrey)
 
-## How can I edit this code?
+> Este repositório guarda a ideia e um protótipo funcional. Não está em produção.
 
-There are several ways of editing your application.
+## A ideia
 
-**Use Lovable**
+Pequenas empresas que terceirizam ou fazem o próprio financeiro precisam registrar entradas e saídas, saber o que está pendente, pago ou vencido e enxergar para onde vai o dinheiro, sem uma planilha diferente para cada coisa.
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/e291bdfb-50fc-4f4c-ac3c-737c12cc0886) and start prompting.
+## O que o protótipo faz
 
-Changes made via Lovable will be committed automatically to this repo.
+- Login por CPF ou CNPJ.
+- Cadastro de transações: receita ou despesa, categoria, valor, vencimento, método de pagamento (à vista ou parcelado, com parcelas).
+- Status de cada transação: pendente, pago ou vencido.
+- Padrões de descrição e de categoria, para cadastrar mais rápido.
+- Dashboard financeiro, histórico de transações e aba de análises.
 
-**Use your preferred IDE**
+## Stack
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+React · TypeScript · Vite · Tailwind CSS · shadcn/ui · Supabase (autenticação e banco). Protótipo gerado com Lovable.
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+## Rodar localmente
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+npm install
+cp .env.example .env   # preencha com os dados do seu projeto Supabase
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+## Contato
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/e291bdfb-50fc-4f4c-ac3c-737c12cc0886) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+[guilhermesint.gerencia@gmail.com](mailto:guilhermesint.gerencia@gmail.com) · portfólio [guilhermevictaliano.github.io](https://guilhermevictaliano.github.io) · LinkedIn [linkedin.com/in/guilherme-victaliano-de-meira-b73933343](https://www.linkedin.com/in/guilherme-victaliano-de-meira-b73933343)
